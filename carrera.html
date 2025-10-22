@@ -10,93 +10,65 @@
     .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)} .badge{padding:.2rem .5rem;border-radius:.5rem;background:#eef2ff}
   </style>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
-    const SUPABASE_ANON_KEY = 'TU-ANON-KEY';
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     function parseISO(d){ return d ? new Date(d) : null }
     function yyyymmdd(d){ return d ? d.toISOString().slice(0,10) : '' }
-    function diffYearsExact(from, to){ return (to - from) / (1000*60*60*24*365.2425); }
-    function calcBienios(fechaIngresoPublico){
-      if(!fechaIngresoPublico) return 0;
-      const hoy = new Date();
-      const years = diffYearsExact(parseISO(fechaIngresoPublico), hoy);
-      return Math.floor(years / 2);
-    }
-    function lastAnniversary(fechaIngreso){
-      if(!fechaIngreso) return null;
-      const base = parseISO(fechaIngreso);
-      const hoy = new Date();
-      const anniv = new Date(hoy.getFullYear(), base.getMonth(), base.getDate());
-      if(anniv > hoy) anniv.setFullYear(anniv.getFullYear()-1);
-      return anniv;
-    }
-    function calcCapContabilizadosCiclo(capTotales, capEncasillados, capTotalesCorte){
-      capTotales = Number(capTotales||0); capEncasillados = Number(capEncasillados||0);
-      const deltaCiclo = Math.max(0, capTotales - Number(capTotalesCorte||0));
-      const cicloCont = Math.min(150, deltaCiclo);
-      return capEncasillados + cicloCont;
-    }
-    function gradoDesdePuntos(categoria, puntosTotales){
-      const ABo = ['A','B'];
-      const tramosAB = [[833,15],[1666,14],[2499,13],[3332,12],[4165,11],[4998,10],[5831,9],[6664,8],[7497,7],[8330,6],[9163,5],[9996,4],[10829,3],[11662,2],[12500,1]];
-      const tramosOtros = [[767,15],[1534,14],[2301,13],[3068,12],[3835,11],[4602,10],[5369,9],[6137,8],[6902,7],[7668,6],[8434,5],[9200,4],[9966,3],[10732,2],[11500,1]];
-      const tabla = ABo.includes(categoria) ? tramosAB : tramosOtros;
-      for(const [umbral, grado] of tabla){ if(puntosTotales <= umbral) return grado; }
-      return '';
-    }
+    function diffYearsExact(from, to){ return (to - from) / (1000*60*60*24*365.2425) }
+    function calcBienios(fechaIngreso){ if(!fechaIngreso) return 0; const y=diffYearsExact(parseISO(fechaIngreso), new Date()); return Math.min(15, Math.floor(y/2)); }
+    function lastAnniversary(fechaIngreso){ if(!fechaIngreso) return null; const base=parseISO(fechaIngreso); const hoy=new Date(); const a=new Date(hoy.getFullYear(), base.getMonth(), base.getDate()); if(a>hoy) a.setFullYear(a.getFullYear()-1); return a; }
+    function calcCapContabilizadosCiclo(capTotales, capEncasillados, capTotalesCorte){ const delta=Math.max(0, Number(capTotales||0) - Number(capTotalesCorte||0)); return Number(capEncasillados||0) + Math.min(150, delta); }
+    function gradoDesdePuntos(categoria, puntosTotales){ const trAB=[[833,15],[1666,14],[2499,13],[3332,12],[4165,11],[4998,10],[5831,9],[6664,8],[7497,7],[8330,6],[9163,5],[9996,4],[10829,3],[11662,2],[12500,1]]; const trOT=[[767,15],[1534,14],[2301,13],[3068,12],[3835,11],[4602,10],[5369,9],[6137,8],[6902,7],[7668,6],[8434,5],[9200,4],[9966,3],[10732,2],[11500,1]]; const t=(categoria==='A'||categoria==='B')?trAB:trOT; for(const [u,g] of t){ if(puntosTotales<=u) return g; } return ''; }
 
     async function main(){
       const { data: { session } } = await supabase.auth.getSession();
-      if(!session){ window.location.href = 'login.html'; return }
-      const email = session.user.email;
-      document.getElementById('userEmail').textContent = email;
+      if(!session){ window.location.href='login.html'; return; }
+      document.getElementById('userEmail').textContent = session.user.email;
 
       const { data, error } = await supabase
         .from('funcionarios')
         .select('categoria, fecha_inicio_contrato, tipo_contrato, fecha_ingreso_publico, cap_totales, cap_encasillados, cap_totales_corte, fecha_ultimo_corte')
-        .eq('email', email)
-        .single();
-      if(error){ document.getElementById('error').textContent = 'No se encontraron registros. Contacta a RRHH.'; return; }
+        .eq('email', session.user.email)
+        .maybeSingle();
 
-      const categoria = data.categoria || '';
-      const fInicio = data.fecha_inicio_contrato || '';
-      const tipoContrato = data.tipo_contrato || '';
-      const fIngreso = data.fecha_ingreso_publico || '';
-      const capTotales = Number(data.cap_totales || 0);
-      const capEncas = Number(data.cap_encasillados || 0);
-      const capTotalesCorte = Number(data.cap_totales_corte || 0);
-      const fUltimoCorte = data.fecha_ultimo_corte || yyyymmdd(lastAnniversary(fIngreso));
+      if(error || !data){ document.getElementById('error').textContent = 'No se encontraron registros. Contacta a RRHH.'; return; }
 
-      const bienios = Math.min(15, calcBienios(fIngreso));
+      const c = data.categoria || '';
+      const fIni = data.fecha_inicio_contrato || '';
+      const tCon = data.tipo_contrato || '';
+      const fIng = data.fecha_ingreso_publico || '';
+      const capT = Number(data.cap_totales || 0);
+      const capE = Number(data.cap_encasillados || 0);
+      const capC = Number(data.cap_totales_corte || 0);
+      const fCorte = data.fecha_ultimo_corte || yyyymmdd(lastAnniversary(fIng));
+
+      const bienios = calcBienios(fIng);
       const puntosBienios = bienios * 533;
-      const capCont = calcCapContabilizadosCiclo(capTotales, capEncas, capTotalesCorte);
-      const saldo = capTotales - capEncas - Math.min(150, Math.max(0, capTotales - capTotalesCorte));
+      const capCont = calcCapContabilizadosCiclo(capT, capE, capC);
+      const saldo = capT - capE - Math.min(150, Math.max(0, capT - capC));
       const puntosTotales = puntosBienios + capCont;
-      const grado = gradoDesdePuntos(categoria, puntosTotales);
+      const grado = gradoDesdePuntos(c, puntosTotales);
 
-      const el = (id, val) => document.getElementById(id).textContent = val;
-      el('categoria', categoria);
-      el('fInicio', yyyymmdd(parseISO(fInicio)));
-      el('tipoContrato', tipoContrato);
-      el('fIngreso', yyyymmdd(parseISO(fIngreso)) + ' — fecha estimada según antigüedad acreditada en RRHH');
+      const el=(id,val)=>document.getElementById(id).textContent=val;
+      el('categoria', c);
+      el('fInicio', yyyymmdd(parseISO(fIni)));
+      el('tipoContrato', tCon);
+      el('fIngreso', yyyymmdd(parseISO(fIng))+' — fecha estimada según antigüedad acreditada en RRHH');
       el('bienios', bienios);
       el('puntosBienios', puntosBienios);
-      el('capTotales', capTotales);
-      el('capEncas', capEncas);
+      el('capTotales', capT);
+      el('capEncas', capE);
       el('capCont', capCont);
       el('saldo', saldo);
       el('puntosTotales', puntosTotales);
-      document.getElementById('infoCorte').textContent = fUltimoCorte;
       el('grado', grado);
+      document.getElementById('infoCorte').textContent = fCorte;
     }
-
     window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('logout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        window.location.href = 'login.html';
-      });
+      document.getElementById('logout').addEventListener('click', async () => { await supabase.auth.signOut(); window.location.href='login.html'; });
       main();
     });
   </script>
@@ -146,6 +118,7 @@
           <div class="grid grid-cols-2"><dt class="text-slate-500">Puntos de capacitación contabilizados</dt><dd id="capCont" class="font-medium"></dd></div>
           <div class="grid grid-cols-2"><dt class="text-slate-500">Saldo disponible</dt><dd id="saldo" class="font-medium"></dd></div>
         </dl>
+        <p class="mt-3 text-xs text-slate-500">* Último aniversario/corte: <span id="infoCorte"></span></p>
       </section>
 
       <section class="p-6 rounded-2xl border lg:col-span-3">
@@ -154,8 +127,7 @@
           <div class="grid grid-cols-2"><dt class="text-slate-500">Puntos totales</dt><dd id="puntosTotales" class="font-medium"></dd></div>
           <div class="grid grid-cols-2"><dt class="text-slate-500">Grado calculado</dt><dd id="grado" class="font-medium"></dd></div>
         </dl>
-        <p class="mt-3 text-xs text-slate-500">* El cálculo usa la tabla de tramos indicada: A/B usan la primera; C–F la segunda.</p>
-        <p class="mt-3 text-xs text-slate-500">* Último aniversario/corte: <span id="infoCorte"></span></p>
+        <p class="mt-3 text-xs text-slate-500">* Cálculo de grado según tramos (A/B vs C–F).</p>
       </section>
     </div>
   </main>

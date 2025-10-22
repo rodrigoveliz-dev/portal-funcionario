@@ -11,51 +11,42 @@
     .row:hover{background:#f8fafc}
   </style>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
-    const SUPABASE_ANON_KEY = 'TU-ANON-KEY';
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const cols = [
-      'email','categoria','fecha_inicio_contrato','tipo_contrato',
-      'fecha_ingreso_publico','cap_totales','cap_encasillados','cap_totales_corte','fecha_ultimo_corte'
-    ];
+    const cols=['email','categoria','fecha_inicio_contrato','tipo_contrato','fecha_ingreso_publico','cap_totales','cap_encasillados','cap_totales_corte','fecha_ultimo_corte'];
 
     async function mustBeAdmin(){
       const { data: { session } } = await supabase.auth.getSession();
-      if(!session){ window.location.href = 'login.html'; return null }
+      if(!session){ window.location.href='login.html'; return null; }
       document.getElementById('userEmail').textContent = session.user.email;
       const { data, error } = await supabase.from('admins').select('email').eq('email', session.user.email).maybeSingle();
-      if(error){ document.getElementById('err').textContent = 'Error validando rol: '+error.message; return null }
-      if(!data){
-        document.getElementById('notAdmin').classList.remove('hidden');
-        document.getElementById('adminApp').classList.add('hidden');
-        return null;
-      }
+      if(error){ document.getElementById('err').textContent='Error validando rol: '+error.message; return null; }
+      if(!data){ document.getElementById('notAdmin').classList.remove('hidden'); document.getElementById('adminApp').classList.add('hidden'); return null; }
       return session.user;
     }
 
-    function toInput(el){ return document.getElementById(el) }
+    function toInput(id){ return document.getElementById(id) }
     function setForm(row){
       for(const c of cols){
-        const v = row?.[c] ?? '';
-        const input = toInput(c);
-        if(!input) continue;
-        if(input.type === 'date') input.value = v ? String(v).slice(0,10) : '';
-        else input.value = v;
+        const v=row?.[c] ?? '';
+        const i=toInput(c); if(!i) continue;
+        if(i.type==='date') i.value = v ? String(v).slice(0,10) : '';
+        else i.value = v;
       }
     }
 
     async function loadTable(){
-      const q = document.getElementById('q').value.trim();
-      let query = supabase.from('funcionarios').select(cols.join(','), { count: 'exact' }).order('email');
-      if(q){ query = query.ilike('email', `%${q}%`); }
+      const q=document.getElementById('q').value.trim();
+      let query=supabase.from('funcionarios').select(cols.join(','), { count:'exact' }).order('email');
+      if(q) query=query.ilike('email', `%${q}%`);
       const { data, error } = await query;
-      const tbody = document.getElementById('tbody');
-      tbody.innerHTML = '';
-      if(error){ document.getElementById('err').textContent = error.message; return }
+      const tbody=document.getElementById('tbody'); tbody.innerHTML='';
+      if(error){ document.getElementById('err').textContent = error.message; return; }
       for(const r of (data||[])){
-        const tr = document.createElement('tr'); tr.className = 'row cursor-pointer';
+        const tr=document.createElement('tr'); tr.className='row cursor-pointer';
         tr.innerHTML = `
           <td class="px-3 py-2 text-sm">${r.email||''}</td>
           <td class="px-3 py-2 text-sm">${r.categoria||''}</td>
@@ -66,34 +57,25 @@
           <td class="px-3 py-2 text-sm">${r.cap_encasillados??0}</td>
           <td class="px-3 py-2 text-sm">${r.cap_totales_corte??0}</td>
           <td class="px-3 py-2 text-sm">${(r.fecha_ultimo_corte||'').slice(0,10)}</td>`;
-        tr.addEventListener('click', ()=>{
-          setForm(r);
-          document.getElementById('email').readOnly = true;
-          document.getElementById('mode').textContent = 'Editar funcionario';
-        });
+        tr.addEventListener('click', ()=>{ setForm(r); document.getElementById('email').readOnly=true; document.getElementById('mode').textContent='Editar funcionario'; });
         tbody.appendChild(tr);
       }
     }
 
     async function save(){
-      const row = {};
-      for(const c of cols){ row[c] = toInput(c)?.value || null }
-      if(!row.email){ alert('Email es obligatorio'); return }
-      for(const n of ['cap_totales','cap_encasillados','cap_totales_corte']){
-        row[n] = row[n]!==null && row[n]!=='' ? Number(row[n]) : null;
-      }
+      const row={};
+      for(const c of cols) row[c]=toInput(c)?.value || null;
+      if(!row.email){ alert('Email es obligatorio'); return; }
+      for(const n of ['cap_totales','cap_encasillados','cap_totales_corte']){ row[n]=row[n]!==null && row[n]!=='' ? Number(row[n]) : null; }
       const { error } = await supabase.from('funcionarios').upsert(row).select();
-      if(error){ alert('Error al guardar: '+error.message); return }
-      await loadTable();
-      alert('Guardado');
-      clearForm();
+      if(error){ alert('Error al guardar: '+error.message); return; }
+      await loadTable(); alert('Guardado'); clearForm();
     }
 
-    function clearForm(){ setForm(null); document.getElementById('email').readOnly = false; document.getElementById('mode').textContent='Nuevo funcionario' }
+    function clearForm(){ setForm(null); document.getElementById('email').readOnly=false; document.getElementById('mode').textContent='Nuevo funcionario' }
 
     window.addEventListener('DOMContentLoaded', async () => {
-      const user = await mustBeAdmin();
-      if(!user) return;
+      const user = await mustBeAdmin(); if(!user) return;
       await loadTable();
       document.getElementById('q').addEventListener('input', ()=> loadTable());
       document.getElementById('save').addEventListener('click', save);

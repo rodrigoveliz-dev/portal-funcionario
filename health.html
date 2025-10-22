@@ -6,13 +6,10 @@
 <script type="module">
   const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
-
   async function run(){
     const out = document.getElementById('out');
     try {
-      const r = await fetch(`${SUPABASE_URL}/auth/v1/health`, {
-        headers: { apikey: SUPABASE_ANON_KEY }
-      });
+      const r = await fetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: SUPABASE_ANON_KEY } });
       out.textContent = `GET /auth/v1/health → ${r.status} ${r.statusText}`;
     } catch (e) {
       out.textContent = 'NetworkError: ' + (e?.message || e);

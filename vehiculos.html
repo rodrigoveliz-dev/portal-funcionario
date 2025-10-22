@@ -5,154 +5,68 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Solicitud de Vehículos — Portal del Funcionario</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
-    .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)}
-    .chip{display:inline-block;padding:.15rem .5rem;border-radius:.5rem;background:#eef2ff}
-  </style>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    async function requireSession(){
-      const { data: { session } } = await supabase.auth.getSession();
-      if(!session){
-        const badge = document.getElementById('userEmail');
-        if(badge) badge.textContent = 'Invitado';
-        return null;
-      }
-      const badge = document.getElementById('userEmail');
-      if(badge) badge.textContent = session.user.email;
-      return session;
-    }
-
-    function rowHTML(r){
-      return `
-        <tr>
-          <td class="px-3 py-2 text-sm">${new Date(r.created_at).toLocaleString()}</td>
-          <td class="px-3 py-2 text-sm">${r.fecha||''}</td>
-          <td class="px-3 py-2 text-sm">${r.origen||''} → ${r.destino||''}</td>
-          <td class="px-3 py-2 text-sm">${r.horario||''}</td>
-          <td class="px-3 py-2 text-sm">${r.prioridad||''}</td>
-          <td class="px-3 py-2 text-sm"><span class="chip">${r.estado||'Pendiente'}</span></td>
-        </tr>`
-    }
-
-    async function loadMine(email){
-      const { data, error } = await supabase
-        .from('solicitudes_vehiculos')
-        .select('*').eq('email', email).order('created_at', { ascending: false });
-      const tbody = document.getElementById('tbody'); tbody.innerHTML='';
-      if(error){ document.getElementById('msg').textContent = error.message; return; }
-      for(const r of (data||[])) tbody.insertAdjacentHTML('beforeend', rowHTML(r));
-    }
-
-    async function save(e, session){
-      e.preventDefault();
-      const fd = new FormData(e.target); const o = Object.fromEntries(fd.entries());
-      const payload = {
-        unidad:o.unidad, solicitante:o.solicitante, telefono:o.telefono||null,
-        fecha:o.fecha, horario:o.horario, origen:o.origen, destino:o.destino,
-        pasajeros:o.pasajeros?Number(o.pasajeros):null, conductor:o.conductor,
-        prioridad:o.prioridad, motivo:o.motivo||null, estado:'Pendiente'
-      };
-      if(session){
-        payload.email = session.user.email;
-      } else {
-        payload.email = null;
-        payload.contacto_email = o.correo_contacto || null;
-      }
-      const { error } = await supabase.from('solicitudes_vehiculos').insert(payload);
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4');
+    window.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('formVeh');
       const out = document.getElementById('msg');
-      if(error){ out.textContent = 'Error: '+error.message; return }
-      out.textContent = 'Solicitud enviada';
-      e.target.reset();
-      if(session){ await loadMine(session.user.email); }
-    }
-
-    window.addEventListener('DOMContentLoaded', async () => {
-      const session = await requireSession();
-      if(session){ await loadMine(session.user.email); }
-      document.getElementById('formVeh').addEventListener('submit', (ev)=> save(ev, session));
-      const logout = document.getElementById('logout');
-      if(logout) logout.addEventListener('click', async ()=>{ await supabase.auth.signOut(); window.location.href='login.html'});
+      form.addEventListener('submit', async (e)=>{
+        e.preventDefault(); out.textContent='Enviando…';
+        const payload = {
+          contacto_email: form.contacto_email.value.trim(),
+          unidad: form.unidad.value.trim(),
+          fecha_salida: form.fecha_salida.value || null,
+          hora_salida: form.hora_salida.value || null,
+          destino: form.destino.value.trim(),
+          motivo: form.motivo.value.trim()
+        };
+        const { error } = await supabase.from('vehiculos_solicitudes').insert(payload);
+        out.textContent = error ? ('Error: '+error.message) : 'Solicitud enviada. ¡Gracias!';
+        if(!error) form.reset();
+      });
     });
   </script>
 </head>
 <body class="bg-white text-slate-800">
   <header class="border-b">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-3">
-        <img src="Calificaciones.png" alt="Logo" class="h-10 w-auto"/>
-        <span class="font-semibold text-azul">Portal del Funcionario</span>
-      </a>
-      <div class="flex items-center gap-3 text-sm">
-        <span id="userEmail" class="chip"></span>
-        <button id="logout" class="px-3 py-1 rounded bg-azul text-white">Cerrar sesión</button>
-      </div>
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      <a href="index.html" class="text-azul font-semibold">← Volver</a>
+      <h1 class="text-xl font-bold">Solicitud de Vehículos</h1>
+      <span></span>
     </div>
   </header>
-
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <h1 class="text-3xl font-bold text-azul">Solicitudes de Vehículos</h1>
-    <p class="mt-2 text-slate-600">Puedes enviar una solicitud sin iniciar sesión. Si inicias sesión, podrás ver tu historial.</p>
-
-    <form id="formVeh" class="mt-8 bg-white rounded-2xl border p-6 grid sm:grid-cols-2 gap-4">
-      <div><label class="block text-sm font-medium">Unidad</label>
-        <input name="unidad" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Solicitante</label>
-        <input name="solicitante" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Correo de contacto (sin login)</label>
-        <input name="correo_contacto" type="email" placeholder="tu@correo.cl" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Teléfono</label>
-        <input name="telefono" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Fecha</label>
-        <input name="fecha" type="date" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Horario</label>
-        <input name="horario" required placeholder="08:00–12:00" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Origen</label>
-        <input name="origen" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Destino</label>
-        <input name="destino" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Pasajeros</label>
-        <input name="pasajeros" type="number" min="1" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Conductor</label>
-        <input name="conductor" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      <div><label class="block text-sm font-medium">Prioridad</label>
-        <select name="prioridad" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul">
-          <option>Normal</option>
-          <option>Alta</option>
-          <option>Emergencia</option>
-        </select></div>
-      <div class="sm:col-span-2"><label class="block text-sm font-medium">Motivo</label>
-        <textarea name="motivo" rows="3" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"></textarea></div>
-      <div class="sm:col-span-2">
-        <button type="submit" class="px-5 py-3 rounded-xl bg-azul text-white">Enviar solicitud</button>
-        <span id="msg" class="ml-3 text-sm text-slate-600"></span>
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <form id="formVeh" class="bg-white rounded-2xl border p-6 grid md:grid-cols-2 gap-4">
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium">Correo de contacto</label>
+        <input name="contacto_email" type="email" required class="w-full rounded-xl border p-2" placeholder="tu@cormusjm.cl" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Unidad</label>
+        <input name="unidad" type="text" required class="w-full rounded-xl border p-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Fecha de salida</label>
+        <input name="fecha_salida" type="date" class="w-full rounded-xl border p-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Hora de salida</label>
+        <input name="hora_salida" type="time" class="w-full rounded-xl border p-2" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Destino</label>
+        <input name="destino" type="text" class="w-full rounded-xl border p-2" />
+      </div>
+      <div class="md:col-span-2">
+        <label class="block text-sm font-medium">Motivo</label>
+        <textarea name="motivo" rows="4" class="w-full rounded-xl border p-2"></textarea>
+      </div>
+      <div class="md:col-span-2">
+        <button class="px-4 py-2 rounded-xl bg-blue-600 text-white">Enviar solicitud</button>
+        <p id="msg" class="text-sm text-slate-600 mt-2"></p>
       </div>
     </form>
-
-    <section class="mt-10 rounded-2xl border overflow-auto">
-      <h2 class="px-6 pt-6 text-xl font-semibold">Mis solicitudes</h2>
-      <table class="min-w-full text-sm">
-        <thead class="bg-slate-50"><tr>
-          <th class="px-3 py-2 text-left">Creada</th>
-          <th class="px-3 py-2 text-left">Fecha</th>
-          <th class="px-3 py-2 text-left">Ruta</th>
-          <th class="px-3 py-2 text-left">Horario</th>
-          <th class="px-3 py-2 text-left">Prioridad</th>
-          <th class="px-3 py-2 text-left">Estado</th>
-        </tr></thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </section>
   </main>
-
-  <footer class="border-t">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600">© <span id="year"></span> Corporación Municipal San José de Maipo</div>
-  </footer>
-  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
 </body>
 </html>

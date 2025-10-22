@@ -15,33 +15,28 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) window.location.href = 'carrera.html';
+    })();
+
     window.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('loginForm');
       const out = document.getElementById('msg');
-
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
         out.textContent = 'Conectando…';
         const email = form.email.value.trim();
         const password = form.password.value;
-
         try {
-          const ping = await fetch(`${SUPABASE_URL}/auth/v1/health`, {
-            headers: { apikey: SUPABASE_ANON_KEY }
-          });
+          const ping = await fetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: SUPABASE_ANON_KEY } });
           if (!ping.ok) throw new Error(`Auth health = ${ping.status}`);
-
           const { error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error) {
-            out.textContent = 'Error de autenticación: ' + error.message;
-            return;
-          }
+          if (error) { out.textContent = 'Error de autenticación: ' + error.message; return; }
           window.location.href = 'carrera.html';
         } catch (err) {
           console.error(err);
-          out.innerHTML = `No se pudo conectar con Supabase.<br>
-          <span class="text-xs">Detalle: ${(err && err.message) || 'NetworkError'}</span><br>
-          Revisa configuración de Auth → URL Configuration (Site/Redirect URLs) y SUPABASE_URL/KEY.`;
+          out.innerHTML = `No se pudo conectar con Supabase.<br><span class="text-xs">Detalle: ${(err && err.message) || 'NetworkError'}</span>`;
         }
       });
     });
@@ -67,6 +62,7 @@
         <button type="submit" class="w-full py-3 rounded-xl bg-azul hover:bg-blue-800 text-white font-semibold">Ingresar</button>
         <p id="msg" class="text-sm text-slate-500"></p>
       </form>
+      <a href="reset.html" class="text-sm text-azul hover:underline mt-3 inline-block">¿Olvidaste tu contraseña?</a>
     </div>
   </main>
 </body>
