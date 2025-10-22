@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ingresar — Mi Carrera Funcionaria</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
+    .bg-azul{background-color:var(--azul)} .bg-verde{background-color:var(--verde)} .text-azul{color:var(--azul)}
+  </style>
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
+    const SUPABASE_ANON_KEY = 'TU-ANON-KEY';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) window.location.href = 'carrera.html';
+    })();
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('loginForm');
+      const out = document.getElementById('msg');
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        out.textContent = 'Autenticando…';
+        const email = form.email.value.trim();
+        const password = form.password.value;
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) { out.textContent = 'Error: ' + error.message; return; }
+        window.location.href = 'carrera.html';
+      });
+    });
+  </script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+  <main class="max-w-md mx-auto p-6 md:p-8">
+    <a href="index.html" class="inline-flex items-center gap-2 text-sm text-azul hover:underline mb-6">← Volver al Portal</a>
+    <div class="bg-white rounded-2xl shadow p-6 md:p-8">
+      <div class="flex items-center gap-3 mb-6">
+        <img src="Calificaciones.png" class="h-10 w-auto" alt="Logo" />
+        <h1 class="text-xl font-bold text-azul">Mi Carrera Funcionaria</h1>
+      </div>
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium">Correo institucional</label>
+          <input name="email" type="email" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="usuario@cormusjm.cl" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Contraseña</label>
+          <input name="password" type="password" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="••••••••" />
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-azul hover:bg-blue-800 text-white font-semibold">Ingresar</button>
+        <p id="msg" class="text-sm text-slate-500"></p>
+      </form>
+      <p class="mt-6 text-xs text-slate-500">¿Sin cuenta? Pídele a RRHH que registre tu usuario.</p>
+    </div>
+  </main>
+</body>
+</html>

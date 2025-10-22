@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Administrador RRHH — Portal del Funcionario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
+    .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)} .badge{padding:.2rem .5rem;border-radius:.5rem;background:#eef2ff}
+    .row:hover{background:#f8fafc}
+  </style>
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
+    const SUPABASE_ANON_KEY = 'TU-ANON-KEY';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const cols = [
+      'email','categoria','fecha_inicio_contrato','tipo_contrato',
+      'fecha_ingreso_publico','cap_totales','cap_encasillados','cap_totales_corte','fecha_ultimo_corte'
+    ];
+
+    async function mustBeAdmin(){
+      const { data: { session } } = await supabase.auth.getSession();
+      if(!session){ window.location.href = 'login.html'; return null }
+      document.getElementById('userEmail').textContent = session.user.email;
+      const { data, error } = await supabase.from('admins').select('email').eq('email', session.user.email).maybeSingle();
+      if(error){ document.getElementById('err').textContent = 'Error validando rol: '+error.message; return null }
+      if(!data){
+        document.getElementById('notAdmin').classList.remove('hidden');
+        document.getElementById('adminApp').classList.add('hidden');
+        return null;
+      }
+      return session.user;
+    }
+
+    function toInput(el){ return document.getElementById(el) }
+    function setForm(row){
+      for(const c of cols){
+        const v = row?.[c] ?? '';
+        const input = toInput(c);
+        if(!input) continue;
+        if(input.type === 'date') input.value = v ? String(v).slice(0,10) : '';
+        else input.value = v;
+      }
+    }
+
+    async function loadTable(){
+      const q = document.getElementById('q').value.trim();
+      let query = supabase.from('funcionarios').select(cols.join(','), { count: 'exact' }).order('email');
+      if(q){ query = query.ilike('email', `%${q}%`); }
+      const { data, error } = await query;
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = '';
+      if(error){ document.getElementById('err').textContent = error.message; return }
+      for(const r of (data||[])){
+        const tr = document.createElement('tr'); tr.className = 'row cursor-pointer';
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-sm">${r.email||''}</td>
+          <td class="px-3 py-2 text-sm">${r.categoria||''}</td>
+          <td class="px-3 py-2 text-sm">${(r.fecha_inicio_contrato||'').slice(0,10)}</td>
+          <td class="px-3 py-2 text-sm">${r.tipo_contrato||''}</td>
+          <td class="px-3 py-2 text-sm">${(r.fecha_ingreso_publico||'').slice(0,10)}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_totales??0}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_encasillados??0}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_totales_corte??0}</td>
+          <td class="px-3 py-2 text-sm">${(r.fecha_ultimo_corte||'').slice(0,10)}</td>`;
+        tr.addEventListener('click', ()=>{
+          setForm(r);
+          document.getElementById('email').readOnly = true;
+          document.getElementById('mode').textContent = 'Editar funcionario';
+        });
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function save(){
+      const row = {};
+      for(const c of cols){ row[c] = toInput(c)?.value || null }
+      if(!row.email){ alert('Email es obligatorio'); return }
+      for(const n of ['cap_totales','cap_encasillados','cap_totales_corte']){
+        row[n] = row[n]!==null && row[n]!=='' ? Number(row[n]) : null;
+      }
+      const { error } = await supabase.from('funcionarios').upsert(row).select();
+      if(error){ alert('Error al guardar: '+error.message); return }
+      await loadTable();
+      alert('Guardado');
+      clearForm();
+    }
+
+    function clearForm(){ setForm(null); document.getElementById('email').readOnly = false; document.getElementById('mode').textContent='Nuevo funcionario' }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const user = await mustBeAdmin();
+      if(!user) return;
+      await loadTable();
+      document.getElementById('q').addEventListener('input', ()=> loadTable());
+      document.getElementById('save').addEventListener('click', save);
+      document.getElementById('new').addEventListener('click', clearForm);
+      document.getElementById('logout').addEventListener('click', async ()=>{ await supabase.auth.signOut(); window.location.href='login.html'});
+    });
+  </script>
+</head>
+<body class="bg-white text-slate-800">
+  <header class="border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <img src="Calificaciones.png" alt="Logo" class="h-10 w-auto"/>
+        <span class="font-semibold text-azul">Portal del Funcionario</span>
+      </a>
+      <div class="flex items-center gap-3 text-sm">
+        <span id="userEmail" class="badge"></span>
+        <button id="logout" class="px-3 py-1 rounded bg-azul text-white">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id="adminApp">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-bold text-azul">Administrador RRHH</h1>
+      <div class="flex gap-2">
+        <input id="q" type="search" placeholder="Buscar por email" class="rounded-xl border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
+        <button id="new" class="px-4 py-2 rounded-xl border">Nuevo</button>
+        <button id="save" class="px-4 py-2 rounded-xl bg-azul text-white">Guardar</button>
+      </div>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-8">
+      <section class="rounded-2xl border overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              <th class="px-3 py-2 text-left">Email</th>
+              <th class="px-3 py-2 text-left">Cat.</th>
+              <th class="px-3 py-2 text-left">Inicio contrato</th>
+              <th class="px-3 py-2 text-left">Tipo</th>
+              <th class="px-3 py-2 text-left">Ingreso público</th>
+              <th class="px-3 py-2 text-left">Cap. totales</th>
+              <th class="px-3 py-2 text-left">Encas.</th>
+              <th class="px-3 py-2 text-left">Totales corte</th>
+              <th class="px-3 py-2 text-left">Fecha corte</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </section>
+
+      <section class="rounded-2xl border p-6">
+        <h2 id="mode" class="text-xl font-semibold mb-4">Nuevo funcionario</h2>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm">Email</label>
+            <input id="email" type="email" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="usuario@cormusjm.cl" />
+          </div>
+          <div>
+            <label class="block text-sm">Categoría</label>
+            <select id="categoria" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul">
+              <option value="">—</option>
+              <option value="A">A (Prof. médico)</option>
+              <option value="B">B (Prof. no médico)</option>
+              <option value="C">C (Técnico)</option>
+              <option value="D">D (Auxiliar Paramédico)</option>
+              <option value="E">E (Administrativo)</option>
+              <option value="F">F (Auxiliar/Conductor)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm">Inicio contrato vigente</label>
+            <input id="fecha_inicio_contrato" type="date" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" />
+          </div>
+          <div>
+            <label class="block text-sm">Tipo de contrato</label>
+            <input id="tipo_contrato" type="text" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="Indefinido / Plazo fijo" />
+          </div>
+          <div>
+            <label class="block text-sm">Ingreso funcionario público</label>
+            <input id="fecha_ingreso_publico" type="date" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" />
+          </div>
+          <div>
+            <label class="block text-sm">Cap. totales</label>
+            <input id="cap_totales" type="number" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" />
+          </div>
+          <div>
+            <label class="block text-sm">Encasillados</label>
+            <input id="cap_encasillados" type="number" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" />
+          </div>
+          <div>
+            <label class="block text-sm">Totales al último aniversario</label>
+            <input id="cap_totales_corte" type="number" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" />
+          </div>
+          <div>
+            <label class="block text-sm">Fecha último corte</label>
+            <input id="fecha_ultimo_corte" type="date" class="w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" />
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="err" class="text-red-600 mt-6"></div>
+  </main>
+
+  <section id="notAdmin" class="hidden max-w-2xl mx-auto p-8 text-center">
+    <h2 class="text-2xl font-bold text-red-600">Acceso restringido</h2>
+    <p class="mt-2 text-slate-600">Tu cuenta no está autorizada como administrador. Solicita acceso a RRHH.</p>
+    <a href="index.html" class="mt-4 inline-block text-azul hover:underline">Volver al portal</a>
+  </section>
+
+  <footer class="border-t">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600">© <span id="year"></span> Corporación Municipal San José de Maipo</div>
+  </footer>
+  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+</body>
+</html>

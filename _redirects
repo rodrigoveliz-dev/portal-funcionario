@@ -1,0 +1,5 @@
+# Fuerza HTTPS
+http://*  https://:splat  301!
+
+# (Opcional) Soporte SPA: si cambias a rutas de una sola página, habilita esta redirección
+# /*   /index.html   200

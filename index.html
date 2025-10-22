@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portal del Funcionario — Corporación Municipal San José de Maipo</title>
+  <meta name="description" content="Portal informativo y de recursos para funcionarios de la Corporación Municipal de San José de Maipo." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
+    .bg-verde{background-color:var(--verde)} .bg-azul{background-color:var(--azul)} .bg-naranjo{background-color:var(--naranjo)}
+    .text-verde{color:var(--verde)} .text-azul{color:var(--azul)} .text-naranjo{color:var(--naranjo)}
+  </style>
+</head>
+<body class="text-slate-800 bg-white">
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <a href="#inicio" class="flex items-center gap-3">
+          <img src="Calificaciones.png" alt="Logo Corporación Municipal San José de Maipo" class="h-12 w-auto" />
+          <span class="font-semibold text-lg text-azul">Portal del Funcionario</span>
+        </a>
+        <nav class="hidden md:flex items-center gap-6 text-slate-700">
+          <a href="#inicio" class="hover:text-naranjo">Inicio</a>
+          <a href="#sobre" class="hover:text-naranjo">Nosotros</a>
+          <a href="#servicios" class="hover:text-naranjo">Servicios</a>
+          <a href="#contacto" class="hover:text-naranjo">Contacto</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="inicio" class="relative overflow-hidden">
+    <div class="absolute inset-0 -z-10">
+      <img src="https://placehold.co/1600x900/004aad/ffffff?text=Portal+del+Funcionario" alt="Imagen de portada" class="w-full h-full object-cover" />
+      <div class="absolute inset-0 bg-black/50"></div>
+    </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-white">
+      <div class="max-w-3xl">
+        <h1 class="text-5xl font-bold leading-tight">Portal del Funcionario</h1>
+        <p class="mt-4 text-lg text-white/90">Corporación Municipal de San José de Maipo — Información, trámites y recursos para nuestros equipos.</p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="#servicios" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-verde hover:bg-green-700 font-medium text-white">Ver recursos</a>
+          <a href="#contacto" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-naranjo hover:bg-orange-600 font-medium text-white">Contáctanos</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="sobre" class="py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-10 items-center">
+      <div>
+        <h2 class="text-3xl font-bold text-azul">¿Quiénes somos?</h2>
+        <p class="mt-4 text-slate-700">La Corporación Municipal de San José de Maipo promueve el bienestar de sus funcionarios mediante este portal, que reúne información institucional, beneficios, documentos oficiales y herramientas de trabajo.</p>
+        <ul class="mt-6 space-y-2 text-slate-700 list-disc list-inside">
+          <li>Acceso rápido a documentación y trámites internos.</li>
+          <li>Actualizaciones y noticias institucionales.</li>
+          <li>Material de apoyo y capacitación.</li>
+        </ul>
+      </div>
+      <div>
+        <img src="Calificaciones.png" alt="Logo Corporación Municipal" class="rounded-2xl shadow" />
+      </div>
+    </div>
+  </section>
+
+  <section id="servicios" class="py-16 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold text-verde">Secciones Principales</h2>
+      <p class="mt-2 text-slate-600">Accede directamente a los módulos más utilizados por los funcionarios.</p>
+      <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <a href="vehiculos.html" class="p-6 bg-white rounded-2xl shadow hover:shadow-md transition block">
+          <h3 class="text-xl font-semibold text-azul">Solicitudes de Vehículos</h3>
+          <p class="mt-2 text-slate-600">Sistema interno para gestionar y aprobar solicitudes de uso de vehículos institucionales.</p>
+        </a>
+        <a href="insumos.html" class="p-6 bg-white rounded-2xl shadow hover:shadow-md transition block">
+          <h3 class="text-xl font-semibold text-azul">Solicitudes de Insumos</h3>
+          <p class="mt-2 text-slate-600">Formulario para requerimientos de materiales o equipos en dependencias.</p>
+        </a>
+        <a href="calidad.html" class="p-6 bg-white rounded-2xl shadow hover:shadow-md transition block">
+          <h3 class="text-xl font-semibold text-azul">Calidad y Seguridad Asistencial</h3>
+          <p class="mt-2 text-slate-600">Protocolos, manuales y normativas de mejora continua y seguridad del paciente.</p>
+        </a>
+        <a href="#" class="p-6 bg-white rounded-2xl shadow hover:shadow-md transition block">
+          <h3 class="text-xl font-semibold text-azul">Documentos y Circulares</h3>
+          <p class="mt-2 text-slate-600">Repositorio de documentos oficiales, circulares y comunicados internos.</p>
+        </a>
+        <a href="login.html" class="p-6 bg-white rounded-2xl shadow hover:shadow-md transition block">
+          <h3 class="text-xl font-semibold text-azul">Mi Carrera Funcionaria</h3>
+          <p class="mt-2 text-slate-600">Desarrollo profesional, capacitaciones, concursos y beneficios laborales.</p>
+        </a>
+        <a href="admin.html" class="p-6 bg-white rounded-2xl shadow hover:shadow-md transition block border border-dashed">
+          <h3 class="text-xl font-semibold text-azul">Administrador RRHH</h3>
+          <p class="mt-2 text-slate-600">Editar datos de funcionarios (acceso restringido).</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section id="contacto" class="py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-10">
+      <div>
+        <h2 class="text-3xl font-bold text-azul">Contacto</h2>
+        <p class="mt-2 text-slate-600">Corporación Municipal de San José de Maipo</p>
+        <ul class="mt-6 space-y-2 text-slate-700">
+          <li><strong>Email:</strong> contacto@cormusjm.cl</li>
+          <li><strong>Teléfono:</strong> +56 2 2861 2345</li>
+          <li><strong>Dirección:</strong> Camino al Volcán 16555, San José de Maipo</li>
+        </ul>
+      </div>
+      <div>
+        <form action="mailto:contacto@cormusjm.cl" method="post" enctype="text/plain" class="bg-white p-6 rounded-2xl shadow space-y-4">
+          <div>
+            <label class="block text-sm font-medium">Nombre</label>
+            <input name="nombre" type="text" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-verde focus:ring-verde" placeholder="Tu nombre" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Email</label>
+            <input name="email" type="email" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-verde focus:ring-verde" placeholder="tucorreo@ejemplo.com" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Mensaje</label>
+            <textarea name="mensaje" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-verde focus:ring-verde" placeholder="¿En qué podemos ayudarte?"></textarea>
+          </div>
+          <button type="submit" class="w-full py-3 rounded-xl bg-azul hover:bg-blue-800 text-white font-semibold">Enviar</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t bg-slate-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-sm text-slate-600 flex flex-col md:flex-row items-center justify-between gap-4">
+      <p>© <span id="year"></span> Corporación Municipal San José de Maipo — Portal del Funcionario</p>
+      <div class="flex items-center gap-4">
+        <a href="#" class="hover:text-azul">Política de privacidad</a>
+        <a href="#" class="hover:text-azul">Términos</a>
+      </div>
+    </div>
+  </footer>
+  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+</body>
+</html>

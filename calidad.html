@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calidad y Seguridad Asistencial — Portal del Funcionario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
+    .bg-azul{background-color:var(--azul)} .text-azul{color:var(--azul)} .text-verde{color:var(--verde)} .text-naranjo{color:var(--naranjo)}
+  </style>
+</head>
+<body class="bg-white text-slate-800">
+  <header class="border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <img src="Calificaciones.png" alt="Logo" class="h-10 w-auto"/>
+        <span class="font-semibold text-azul">Portal del Funcionario</span>
+      </a>
+      <a href="index.html#servicios" class="text-sm hover:text-azul">← Volver a Secciones</a>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <h1 class="text-3xl font-bold text-azul">Calidad y Seguridad Asistencial</h1>
+    <p class="mt-3 text-slate-700 max-w-3xl">Repositorio para protocolos, manuales, instructivos y normativa vigente en materia de gestión de calidad, seguridad del paciente y mejora continua. Usa estas carpetas para organizar y facilitar el acceso del equipo.</p>
+
+    <div class="mt-8 grid gap-6 md:grid-cols-2">
+      <section class="p-6 rounded-2xl border">
+        <h2 class="text-xl font-semibold">Protocolos y guías</h2>
+        <ul class="mt-3 list-disc list-inside text-slate-700">
+          <li><a class="text-azul hover:underline" href="#">Hand hygiene / IAAS</a></li>
+          <li><a class="text-azul hover:underline" href="#">Gestión de eventos adversos</a></li>
+          <li><a class="text-azul hover:underline" href="#">Checklist de seguridad</a></li>
+        </ul>
+      </section>
+      <section class="p-6 rounded-2xl border">
+        <h2 class="text-xl font-semibold">Normativa</h2>
+        <ul class="mt-3 list-disc list-inside text-slate-700">
+          <li><a class="text-azul hover:underline" href="#">Decretos y resoluciones</a></li>
+          <li><a class="text-azul hover:underline" href="#">Manual de Acreditación APS</a></li>
+        </ul>
+      </section>
+      <section class="p-6 rounded-2xl border">
+        <h2 class="text-xl font-semibold">Formatos y formularios</h2>
+        <ul class="mt-3 list-disc list-inside text-slate-700">
+          <li><a class="text-azul hover:underline" href="#">Registro de evento adverso</a></li>
+          <li><a class="text-azul hover:underline" href="#">Plan de mejora</a></li>
+        </ul>
+      </section>
+      <section class="p-6 rounded-2xl border">
+        <h2 class="text-xl font-semibold">Capacitación</h2>
+        <dl class="mt-3 space-y-2">
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Puntos de capacitación totales</dt><dd id="capTotales" class="font-medium"></dd></div>
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Puntos encasillados (históricos)</dt><dd id="capEncas" class="font-medium"></dd></div>
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Contabilizados (ciclo vigente)</dt><dd id="capCont" class="font-medium"></dd></div>
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Saldo disponible</dt><dd id="saldo" class="font-medium"></dd></div>
+        </dl>
+        <p class="mt-3 text-xs text-slate-500">* Regla: contabilizados = encasillados + min(150, max(0, totales − totales_al_último_aniversario)).</p>
+        <p class="text-xs text-slate-500">* Último aniversario/corte: <span id="infoCorte"></span></p>
+      </section>
+    </div>
+
+    <div class="mt-10 p-6 rounded-2xl bg-slate-50 border">
+      <h2 class="text-lg font-semibold">Administrador (opcional)</h2>
+      <p class="text-slate-600">Puedes reemplazar los enlaces por URLs reales (Drive, SharePoint u otro). Si quieres, puedo integrar un panel con autenticación para subir/gestionar archivos.</p>
+    </div>
+  </main>
+
+  <footer class="border-t">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600">© <span id="year"></span> Corporación Municipal San José de Maipo</div>
+  </footer>
+  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+</body>
+</html>
