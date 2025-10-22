@@ -7,21 +7,27 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
-    .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)} .badge{padding:.2rem .5rem;border-radius:.5rem;background:#eef2ff}
-    .chip{font-size:.75rem;padding:.15rem .5rem;border-radius:.5rem;background:#f1f5f9}
+    .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)}
+    .chip{display:inline-block;padding:.15rem .5rem;border-radius:.5rem;background:#eef2ff}
   </style>
   <script type="module">
     import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
-    const SUPABASE_ANON_KEY = 'TU-ANON-KEY';
+    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function requireSession(){
       const { data: { session } } = await supabase.auth.getSession();
-      if(!session){ window.location.href = 'login.html'; return null }
-      document.getElementById('userEmail').textContent = session.user.email;
+      if(!session){
+        const badge = document.getElementById('userEmail');
+        if(badge) badge.textContent = 'Invitado';
+        return null;
+      }
+      const badge = document.getElementById('userEmail');
+      if(badge) badge.textContent = session.user.email;
       return session;
     }
+
     function rowHTML(r){
       return `
         <tr>
@@ -32,32 +38,45 @@
           <td class="px-3 py-2 text-sm"><span class="chip">${r.estado||'Pendiente'}</span></td>
         </tr>`
     }
+
     async function loadMine(email){
       const { data, error } = await supabase
         .from('solicitudes_insumos')
         .select('*').eq('email', email).order('created_at', { ascending: false });
-      const tbody = document.getElementById('tbody'); tbody.innerHTML = '';
+      const tbody = document.getElementById('tbody'); tbody.innerHTML='';
       if(error){ document.getElementById('msg').textContent = error.message; return; }
       for(const r of (data||[])) tbody.insertAdjacentHTML('beforeend', rowHTML(r));
     }
+
     async function save(e, session){
       e.preventDefault();
       const fd = new FormData(e.target); const o = Object.fromEntries(fd.entries());
       const payload = {
-        dependencia:o.dependencia, solicitante:o.solicitante, email:session.user.email, telefono:o.telefono||null,
-        insumo:o.insumo, cantidad:o.cantidad?Number(o.cantidad):null, prioridad:o.prioridad, descripcion:o.descripcion||null,
-        centro:o.centro||null, enlace:o.enlace||null, estado:'Pendiente'
+        dependencia:o.dependencia, solicitante:o.solicitante, telefono:o.telefono||null,
+        insumo:o.insumo, cantidad:o.cantidad?Number(o.cantidad):null, prioridad:o.prioridad,
+        descripcion:o.descripcion||null, centro:o.centro||null, enlace:o.enlace||null,
+        estado:'Pendiente'
       };
+      if(session){
+        payload.email = session.user.email;
+      } else {
+        payload.email = null;
+        payload.contacto_email = o.correo_contacto || null;
+      }
       const { error } = await supabase.from('solicitudes_insumos').insert(payload);
       const out = document.getElementById('msg');
       if(error){ out.textContent = 'Error: '+error.message; return }
-      out.textContent = 'Solicitud enviada'; e.target.reset(); await loadMine(session.user.email);
+      out.textContent = 'Solicitud enviada';
+      e.target.reset();
+      if(session){ await loadMine(session.user.email); }
     }
+
     window.addEventListener('DOMContentLoaded', async () => {
-      const session = await requireSession(); if(!session) return;
-      await loadMine(session.user.email);
+      const session = await requireSession();
+      if(session){ await loadMine(session.user.email); }
       document.getElementById('formIns').addEventListener('submit', (ev)=> save(ev, session));
-      document.getElementById('logout').addEventListener('click', async ()=>{ await supabase.auth.signOut(); window.location.href='login.html'});
+      const logout = document.getElementById('logout');
+      if(logout) logout.addEventListener('click', async ()=>{ await supabase.auth.signOut(); window.location.href='login.html'});
     });
   </script>
 </head>
@@ -69,63 +88,59 @@
         <span class="font-semibold text-azul">Portal del Funcionario</span>
       </a>
       <div class="flex items-center gap-3 text-sm">
-        <span id="userEmail" class="badge"></span>
+        <span id="userEmail" class="chip"></span>
         <button id="logout" class="px-3 py-1 rounded bg-azul text-white">Cerrar sesión</button>
       </div>
     </div>
   </header>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <h1 class="text-3xl font-bold text-azul">Solicitud de Insumos</h1>
-    <p class="mt-2 text-slate-600">Completa el formulario. Tus solicitudes quedarán registradas y podrás ver su estado.</p>
+    <h1 class="text-3xl font-bold text-azul">Solicitudes de Insumos</h1>
+    <p class="mt-2 text-slate-600">Puedes enviar una solicitud sin iniciar sesión. Si inicias sesión, podrás ver tu historial.</p>
 
-    <form id="formIns" class="mt-8 bg-white rounded-2xl border p-6 space-y-4">
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div><label class="block text-sm font-medium">Dependencia</label>
-          <input name="dependencia" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="CESFAM / Escuela / Administración…"/></div>
-        <div><label class="block text-sm font-medium">Solicitante</label>
-          <input name="solicitante" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-      </div>
-
-      <div class="grid sm:grid-cols-3 gap-4">
-        <div><label class="block text-sm font-medium">Insumo</label>
-          <input name="insumo" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="Ej. Guantes Nitrilo"/></div>
-        <div><label class="block text-sm font-medium">Cantidad</label>
-          <input name="cantidad" type="number" min="1" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-        <div><label class="block text-sm font-medium">Prioridad</label>
-          <select name="prioridad" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"><option>Normal</option><option>Alta</option><option>Urgente</option></select></div>
-      </div>
-
-      <div><label class="block text-sm font-medium">Descripción / Observaciones</label>
-        <textarea name="descripcion" rows="4" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="Detalles, marca, talla, etc."></textarea></div>
-
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div><label class="block text-sm font-medium">Centro de costo (opcional)</label>
-          <input name="centro" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
-        <div><label class="block text-sm font-medium">Enlace a documento (Drive/SharePoint opcional)</label>
-          <input name="enlace" type="url" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="https://…"/></div>
-      </div>
-
-      <div class="flex gap-3 items-center">
-        <button type="submit" class="px-5 py-3 rounded-xl bg-azul text-white">Registrar solicitud</button>
-        <span id="msg" class="text-sm text-slate-500"></span>
+    <form id="formIns" class="mt-8 bg-white rounded-2xl border p-6 grid sm:grid-cols-2 gap-4">
+      <div><label class="block text-sm font-medium">Dependencia</label>
+        <input name="dependencia" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
+      <div><label class="block text-sm font-medium">Solicitante</label>
+        <input name="solicitante" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
+      <div><label class="block text-sm font-medium">Correo de contacto (sin login)</label>
+        <input name="correo_contacto" type="email" placeholder="tu@correo.cl" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
+      <div><label class="block text-sm font-medium">Teléfono</label>
+        <input name="telefono" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
+      <div class="sm:col-span-2"><label class="block text-sm font-medium">Insumo</label>
+        <input name="insumo" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
+      <div><label class="block text-sm font-medium">Cantidad</label>
+        <input name="cantidad" type="number" min="1" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
+      <div><label class="block text-sm font-medium">Prioridad</label>
+        <select name="prioridad" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul">
+          <option>Normal</option>
+          <option>Alta</option>
+          <option>Urgente</option>
+        </select></div>
+      <div class="sm:col-span-2"><label class="block text-sm font-medium">Descripción</label>
+        <textarea name="descripcion" rows="3" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"></textarea></div>
+      <div><label class="block text-sm font-medium">Centro</label>
+        <input name="centro" class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
+      <div><label class="block text-sm font-medium">Enlace (opcional)</label>
+        <input name="enlace" type="url" placeholder="https://..." class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul"/></div>
+      <div class="sm:col-span-2">
+        <button type="submit" class="px-5 py-3 rounded-xl bg-azul text-white">Enviar solicitud</button>
+        <span id="msg" class="ml-3 text-sm text-slate-600"></span>
       </div>
     </form>
 
-    <section class="mt-10 rounded-2xl border">
-      <div class="p-6 flex items-center justify-between"><h2 class="text-xl font-semibold">Mis solicitudes</h2></div>
-      <div class="overflow-auto">
-        <table class="min-w-full text-sm">
-          <thead class="bg-slate-50"><tr>
-            <th class="px-3 py-2 text-left">Creada</th>
-            <th class="px-3 py-2 text-left">Insumo</th>
-            <th class="px-3 py-2 text-left">Cantidad</th>
-            <th class="px-3 py-2 text-left">Prioridad</th>
-            <th class="px-3 py-2 text-left">Estado</th>
-          </tr></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
+    <section class="mt-10 rounded-2xl border overflow-auto">
+      <h2 class="px-6 pt-6 text-xl font-semibold">Mis solicitudes</h2>
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50"><tr>
+          <th class="px-3 py-2 text-left">Creada</th>
+          <th class="px-3 py-2 text-left">Insumo</th>
+          <th class="px-3 py-2 text-left">Cantidad</th>
+          <th class="px-3 py-2 text-left">Prioridad</th>
+          <th class="px-3 py-2 text-left">Estado</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
     </section>
   </main>
 
