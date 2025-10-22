@@ -10,27 +10,38 @@
     .bg-azul{background-color:var(--azul)} .bg-verde{background-color:var(--verde)} .text-azul{color:var(--azul)}
   </style>
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-    const SUPABASE_URL = 'https://TU-PROYECTO.supabase.co';
-    const SUPABASE_ANON_KEY = 'TU-ANON-KEY';
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) window.location.href = 'carrera.html';
-    })();
 
     window.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('loginForm');
       const out = document.getElementById('msg');
+
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        out.textContent = 'Autenticando…';
+        out.textContent = 'Conectando…';
         const email = form.email.value.trim();
         const password = form.password.value;
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) { out.textContent = 'Error: ' + error.message; return; }
-        window.location.href = 'carrera.html';
+
+        try {
+          // Ping para detectar problemas de red/CORS
+          const ping = await fetch(`${SUPABASE_URL}/auth/v1/health`);
+          if (!ping.ok) throw new Error(`Auth health = ${ping.status}`);
+
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) {
+            out.textContent = 'Error de autenticación: ' + error.message;
+            return;
+          }
+          window.location.href = 'carrera.html';
+        } catch (err) {
+          console.error(err);
+          out.innerHTML = `No se pudo conectar con Supabase.<br>
+          <span class="text-xs">Detalle: ${(err && err.message) || 'NetworkError'}</span><br>
+          Revisa: Auth → URL Configuration (Site/Redirect URLs), extensiones tipo AdBlock, y SUPABASE_URL/KEY en el código.`;
+        }
       });
     });
   </script>
@@ -56,6 +67,7 @@
         <p id="msg" class="text-sm text-slate-500"></p>
       </form>
       <p class="mt-6 text-xs text-slate-500">¿Sin cuenta? Pídele a RRHH que registre tu usuario.</p>
+      <a href="reset.html" class="text-sm text-azul hover:underline mt-3 inline-block">¿Olvidaste tu contraseña?</a>
     </div>
   </main>
 </body>

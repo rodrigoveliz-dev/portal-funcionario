@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Restablecer contraseña — Portal del Funcionario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --azul:#004aad; } .bg-azul{background-color:var(--azul)}
+  </style>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function sendReset(e){
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const out = document.getElementById('msg1');
+      out.textContent = 'Enviando…';
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/reset.html'
+      });
+      out.textContent = error ? ('Error: ' + error.message) : 'Revisa tu correo y sigue el enlace.';
+    }
+
+    async function updatePass(e){
+      e.preventDefault();
+      const pass = document.getElementById('pass').value;
+      const out = document.getElementById('msg2');
+      out.textContent = 'Actualizando…';
+      const { data: { session } } = await supabase.auth.getSession();
+      if(!session){ out.textContent = 'Enlace no válido o expirado. Vuelve a solicitarlo.'; return; }
+      const { error } = await supabase.auth.updateUser({ password: pass });
+      out.textContent = error ? ('Error: ' + error.message) : 'Contraseña actualizada. Ya puedes ingresar.';
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      document.getElementById('step1').classList.toggle('hidden', !!session);
+      document.getElementById('step2').classList.toggle('hidden', !session);
+      document.getElementById('form1').addEventListener('submit', sendReset);
+      document.getElementById('form2').addEventListener('submit', updatePass);
+    });
+  </script>
+</head>
+<body class="min-h-screen bg-slate-50">
+  <main class="max-w-md mx-auto p-6 md:p-8">
+    <a href="login.html" class="text-sm text-azul hover:underline">← Volver a Ingresar</a>
+
+    <section id="step1" class="bg-white rounded-2xl shadow p-6 md:p-8 mt-6">
+      <h1 class="text-xl font-bold">Restablecer contraseña</h1>
+      <p class="text-slate-600 mt-2">Ingresa tu correo institucional y te enviaremos un enlace para crear una nueva clave.</p>
+      <form id="form1" class="space-y-4 mt-4">
+        <div>
+          <label class="block text-sm font-medium">Correo</label>
+          <input id="email" type="email" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="usuario@cormusjm.cl" />
+        </div>
+        <button class="w-full py-3 rounded-xl bg-azul text-white font-semibold">Enviar enlace</button>
+        <p id="msg1" class="text-sm text-slate-500"></p>
+      </form>
+    </section>
+
+    <section id="step2" class="hidden bg-white rounded-2xl shadow p-6 md:p-8 mt-6">
+      <h1 class="text-xl font-bold">Nueva contraseña</h1>
+      <form id="form2" class="space-y-4 mt-4">
+        <div>
+          <label class="block text-sm font-medium">Contraseña nueva</label>
+          <input id="pass" type="password" minlength="8" required class="mt-1 w-full rounded-xl border-slate-300 focus:border-azul focus:ring-azul" placeholder="••••••••" />
+        </div>
+        <button class="w-full py-3 rounded-xl bg-azul text-white font-semibold">Actualizar contraseña</button>
+        <p id="msg2" class="text-sm text-slate-500"></p>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
