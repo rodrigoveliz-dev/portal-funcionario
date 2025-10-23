@@ -31,7 +31,33 @@
         </nav>
       </div>
     </div>
-  </header>
+  \1
+
+  <!-- Sidebar de Links de interés (visible sin login) -->
+  <aside class="hidden lg:block fixed right-4 top-28 z-30 w-72">
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow border p-4">
+      <h2 class="text-lg font-semibold text-azul mb-3">Links de interés</h2>
+      <div class="flex flex-col gap-2">
+        <a href="https://workera.com/portal/login" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-2 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Reloj Control</a>
+        <a href="https://e-learning.ssmso.cl/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-2 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Aula Virtual SSMSO</a>
+        <a href="https://www.ssmso.cl/EA_AA/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-2 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Reporte Eventos Adversos</a>
+        <a href="https://labsotero.ssmso.cl/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-2 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Laboratorio</a>
+        <a href="https://interconsulta.minsal.cl/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-2 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Telemedicina</a>
+        <a href="https://telesalud.gob.cl/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-2 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Telesalud</a>
+        <a href="https://www.hospitaldigital.gob.cl" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-2 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Hospital digital</a>
+      </div>
+      <p class="text-xs text-slate-500 mt-3">* Disponible para todos los visitantes.</p>
+    </div>
+  </aside>
+  <!-- Fin Sidebar -->
+
 
   <section id="inicio" class="relative bg-azul text-white">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
@@ -181,5 +207,34 @@
 
     document.getElementById('year').textContent=new Date().getFullYear();
   </script>
+
+  <!-- Botón flotante móvil para Links (visible en pantallas pequeñas) -->
+  <a href="#links-interes" class="lg:hidden fixed right-4 bottom-4 z-30 px-4 py-3 rounded-full bg-azul text-white shadow-lg hover:opacity-90 transition">
+    Links
+  </a>
+
+
+  <section id="links-interes" class="lg:hidden py-8 bg-slate-50 mt-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-xl font-bold text-azul mb-3">Links de interés</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <a href="https://workera.com/portal/login" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-3 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Reloj Control</a>
+        <a href="https://e-learning.ssmso.cl/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-3 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Aula Virtual SSMSO</a>
+        <a href="https://www.ssmso.cl/EA_AA/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-3 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Reporte Eventos Adversos</a>
+        <a href="https://labsotero.ssmso.cl/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-3 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Laboratorio</a>
+        <a href="https://interconsulta.minsal.cl/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-3 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Telemedicina</a>
+        <a href="https://telesalud.gob.cl/" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-3 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Telesalud</a>
+        <a href="https://www.hospitaldigital.gob.cl" target="_blank" rel="noopener noreferrer"
+           class="px-4 py-3 rounded-xl bg-azul text-white hover:opacity-90 transition text-center">Hospital digital</a>
+      </div>
+    </div>
+  </section>
+
 </body>
 </html>
