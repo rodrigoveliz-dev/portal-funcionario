@@ -8,22 +8,21 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4');
-    window.addEventListener('DOMContentLoaded', () => {
-      const form = document.getElementById('formVeh');
-      const out = document.getElementById('msg');
+    const EMAIL_RE = /^[^@]+@cormusjm\.cl$/i;
+    const THROTTLE_KEY = 'veh_solic_last_submit';
+    function throttled(){const last=Number(localStorage.getItem(THROTTLE_KEY)||0);return (Date.now()-last)<60000;}
+    function markSubmit(){localStorage.setItem(THROTTLE_KEY,String(Date.now()));}
+    function genCode(){return 'V-'+Math.random().toString(36).slice(2,8).toUpperCase();}
+    window.addEventListener('DOMContentLoaded',()=>{
+      const form=document.getElementById('formVeh'); const out=document.getElementById('msg');
       form.addEventListener('submit', async (e)=>{
-        e.preventDefault(); out.textContent='Enviando…';
-        const payload = {
-          contacto_email: form.contacto_email.value.trim(),
-          unidad: form.unidad.value.trim(),
-          fecha_salida: form.fecha_salida.value || null,
-          hora_salida: form.hora_salida.value || null,
-          destino: form.destino.value.trim(),
-          motivo: form.motivo.value.trim()
-        };
-        const { error } = await supabase.from('vehiculos_solicitudes').insert(payload);
-        out.textContent = error ? ('Error: '+error.message) : 'Solicitud enviada. ¡Gracias!';
-        if(!error) form.reset();
+        e.preventDefault(); out.textContent='';
+        if(form.hp.value){ out.textContent='Error de validación.'; return; }
+        if(throttled()){ out.textContent='Espera unos segundos antes de enviar otra solicitud.'; return; }
+        const contacto=form.contacto_email.value.trim(); if(!EMAIL_RE.test(contacto)){ out.textContent='El correo debe ser @cormusjm.cl'; return; }
+        const payload={ contacto_email:contacto, unidad:form.unidad.value.trim(), fecha_salida:form.fecha_salida.value||null, hora_salida:form.hora_salida.value||null, destino:form.destino.value.trim(), motivo:form.motivo.value.trim(), codigo:genCode() };
+        out.textContent='Enviando…'; const { error } = await supabase.from('vehiculos_solicitudes').insert(payload);
+        if(error){ out.textContent='Error: '+error.message; return; } markSubmit(); out.innerHTML=`✅ Enviada. Código <strong>${payload.codigo}</strong>`; form.reset();
       });
     });
   </script>
@@ -37,9 +36,10 @@
     </div>
   </header>
   <main class="max-w-5xl mx-auto px-4 py-8">
-    <form id="formVeh" class="bg-white rounded-2xl border p-6 grid md:grid-cols-2 gap-4">
+    <form id="formVeh" class="bg-white rounded-2xl border p-6 grid md:grid-cols-2 gap-4" novalidate>
+      <input type="text" name="hp" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;" tabindex="-1" aria-hidden="true" />
       <div class="md:col-span-2">
-        <label class="block text-sm font-medium">Correo de contacto</label>
+        <label class="block text-sm font-medium">Correo de contacto (@cormusjm.cl)</label>
         <input name="contacto_email" type="email" required class="w-full rounded-xl border p-2" placeholder="tu@cormusjm.cl" />
       </div>
       <div>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mis Permisos y Solicitudes — Portal del Funcionario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --azul:#004aad; }
+    .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)}
+    @media print { header, footer, #logout, .print-btn { display:none !important; } }
+  </style>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4');
+    async function main(){
+      const { data: { session } } = await supabase.auth.getSession();
+      if(!session){ window.location.href='login.html'; return; }
+      document.getElementById('userEmail').textContent = session.user.email;
+      const { data, error } = await supabase.from('permisos').select('dias_admin_totales, dias_admin_usados, feriados_totales, feriados_usados').eq('email', session.user.email).maybeSingle();
+      if(error || !data){ document.getElementById('error').textContent='No se encontró información de permisos para tu cuenta.'; return; }
+      const admTot = (data.dias_admin_totales ?? 6);
+      let admUsados = Number(data.dias_admin_usados ?? 0); if(admUsados<0) admUsados=0; if(admUsados>6) admUsados=6;
+      const admDisp = Math.max(0, Math.min(6, (Number(admTot)||6) - admUsados));
+      const ferTot = Number(data.feriados_totales ?? 0);
+      let ferUsados = Number(data.feriados_usados ?? 0); if(ferUsados<0) ferUsados=0; if(ferUsados>ferTot) ferUsados=ferTot;
+      const ferDisp = Math.max(0, ferTot - ferUsados);
+      const el=(id,val)=>document.getElementById(id).textContent=String(val);
+      el('admTot', admTot); el('admUsados', admUsados); el('admDisp', (Math.round(admDisp*100)/100).toString().replace(/\.00$/, ''));
+      el('ferTot', ferTot); el('ferUsados', ferUsados); el('ferDisp', ferDisp);
+    }
+    window.addEventListener('DOMContentLoaded', ()=>{ document.getElementById('logout').addEventListener('click', async()=>{ await supabase.auth.signOut(); window.location.href='login.html'; }); main(); });
+  </script>
+</head>
+<body class="bg-white text-slate-800">
+  <header class="border-b">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <img src="Calificaciones.png" alt="Logo" class="h-10 w-auto"/>
+        <span class="font-semibold text-azul">Portal del Funcionario</span>
+      </a>
+      <div class="flex items-center gap-3 text-sm">
+        <span id="userEmail" class="px-2 py-1 rounded bg-slate-100"></span>
+        <button id="logout" class="px-3 py-1 rounded bg-azul text-white">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div class="flex justify-end mb-4 print-btn">
+      <button onclick="window.print()" class="px-4 py-2 rounded-xl border">Imprimir / Guardar PDF</button>
+    </div>
+
+    <h1 class="text-3xl font-bold text-azul mb-2">Mis Permisos y Solicitudes</h1>
+    <p class="text-xs text-slate-500 mb-6">Información individual (solo lectura). Para cambios, coordina con RRHH.</p>
+    <div id="error" class="text-red-600 mb-4"></div>
+
+    <div class="grid gap-6 md:grid-cols-2">
+      <section class="p-6 rounded-2xl border">
+        <h2 class="text-xl font-semibold">a) Permisos Administrativos</h2>
+        <p class="text-xs text-slate-500 mt-1">Días permitidos: 0 a 6 por año. Se aceptan fracciones (p. ej., 1,5).</p>
+        <dl class="mt-4 space-y-2">
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Días administrativos totales</dt><dd id="admTot" class="font-medium">—</dd></div>
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Días utilizados</dt><dd id="admUsados" class="font-medium">—</dd></div>
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Días disponibles</dt><dd id="admDisp" class="font-medium">—</dd></div>
+        </dl>
+      </section>
+
+      <section class="p-6 rounded-2xl border">
+        <h2 class="text-xl font-semibold">b) Feriados Legales</h2>
+        <p class="text-xs text-slate-500 mt-1">Valores enteros.</p>
+        <dl class="mt-4 space-y-2">
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Días totales</dt><dd id="ferTot" class="font-medium">—</dd></div>
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Días utilizados</dt><dd id="ferUsados" class="font-medium">—</dd></div>
+          <div class="grid grid-cols-2"><dt class="text-slate-500">Días disponibles</dt><dd id="ferDisp" class="font-medium">—</dd></div>
+        </dl>
+      </section>
+    </div>
+  </main>
+
+  <footer class="border-t">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600">© <span id="year"></span> Corporación Municipal San José de Maipo</div>
+  </footer>
+  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+</body>
+</html>
