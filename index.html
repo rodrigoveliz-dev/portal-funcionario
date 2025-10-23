@@ -133,22 +133,31 @@
   </footer>
 
   <script type="module">
-    import {{ createClient }} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-    const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', '{SUPABASE_ANON_KEY}');
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4');
     const loginBtn = document.getElementById('loginButton');
 
-    async function checkSession() {{
-      const {{ data: {{ session }} }} = await supabase.auth.getSession();
-      if (session?.user) {{
+    // Comportamiento inmediato: si se hace clic sin sesión => ir a login
+    loginBtn.onclick = () => window.location.href = 'login.html';
+
+    async function paintSession(session) {
+      if (session?.user) {
         loginBtn.textContent = session.user.email;
         loginBtn.classList.remove('bg-red-600','hover:bg-red-700');
         loginBtn.classList.add('bg-green-600','hover:bg-green-700');
         loginBtn.onclick = () => window.location.href = 'carrera.html';
-      }} else {{
-        loginBtn.onclick = () => window.location.href = 'login.html';
-      }}
-    }}
-    checkSession();
+      }
+    }
+
+    // 1) Comprobar sesión al cargar
+    const { data: { session } } = await supabase.auth.getSession();
+    await paintSession(session);
+
+    // 2) Suscribirse a cambios de sesión (por si vuelve del login con session nueva)
+    supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      await paintSession(newSession);
+    });
+
     document.getElementById('year').textContent=new Date().getFullYear();
   </script>
 </body>
