@@ -3,41 +3,47 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ingresar — Mi Carrera Funcionaria</title>
+  <title>Identificación de Funcionario — Portal del Funcionario</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
     .bg-azul{background-color:var(--azul)} .bg-verde{background-color:var(--verde)} .text-azul{color:var(--azul)}
   </style>
+
+  <!-- Supabase JS (ESM) -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    // Tus credenciales (ya validadas)
     const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // Si ya hay sesión, volver a la portada
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) window.location.href = 'carrera.html';
+      if (session) window.location.href = 'index.html';
     })();
 
     window.addEventListener('DOMContentLoaded', () => {
       const form = document.getElementById('loginForm');
       const out = document.getElementById('msg');
+
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        out.textContent = 'Conectando…';
+        out.textContent = 'Autenticando…';
         const email = form.email.value.trim();
         const password = form.password.value;
-        try {
-          const ping = await fetch(`${SUPABASE_URL}/auth/v1/health`, { headers: { apikey: SUPABASE_ANON_KEY } });
-          if (!ping.ok) throw new Error(`Auth health = ${ping.status}`);
-          const { error } = await supabase.auth.signInWithPassword({ email, password });
-          if (error) { out.textContent = 'Error de autenticación: ' + error.message; return; }
-          window.location.href = 'carrera.html';
-        } catch (err) {
-          console.error(err);
-          out.innerHTML = `No se pudo conectar con Supabase.<br><span class="text-xs">Detalle: ${(err && err.message) || 'NetworkError'}</span>`;
+
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          out.textContent = 'Error: ' + error.message;
+          return;
         }
+        out.textContent = 'Ingreso correcto. Redirigiendo…';
+        // Al autenticar, volver a la portada
+        window.location.href = 'index.html';
       });
     });
   </script>
@@ -45,11 +51,13 @@
 <body class="min-h-screen bg-slate-50 text-slate-800">
   <main class="max-w-md mx-auto p-6 md:p-8">
     <a href="index.html" class="inline-flex items-center gap-2 text-sm text-azul hover:underline mb-6">← Volver al Portal</a>
+
     <div class="bg-white rounded-2xl shadow p-6 md:p-8">
       <div class="flex items-center gap-3 mb-6">
         <img src="Calificaciones.png" class="h-10 w-auto" alt="Logo" />
-        <h1 class="text-xl font-bold text-azul">Mi Carrera Funcionaria</h1>
+        <h1 class="text-xl font-bold text-azul">Identificación de Funcionario</h1>
       </div>
+
       <form id="loginForm" class="space-y-4">
         <div>
           <label class="block text-sm font-medium">Correo institucional</label>
@@ -62,7 +70,8 @@
         <button type="submit" class="w-full py-3 rounded-xl bg-azul hover:bg-blue-800 text-white font-semibold">Ingresar</button>
         <p id="msg" class="text-sm text-slate-500"></p>
       </form>
-      <a href="reset.html" class="text-sm text-azul hover:underline mt-3 inline-block">¿Olvidaste tu contraseña?</a>
+
+      <p class="mt-6 text-xs text-slate-500">¿Sin cuenta? Pídele a RRHH que registre tu usuario.</p>
     </div>
   </main>
 </body>
