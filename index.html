@@ -25,23 +25,28 @@
           <a href="#sobre" class="hover:text-naranjo">Nosotros</a>
           <a href="#servicios" class="hover:text-naranjo">Servicios</a>
           <a href="#contacto" class="hover:text-naranjo">Contacto</a>
+          <button id="loginButton" class="ml-4 px-4 py-2 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition">
+            Acceder
+          </button>
         </nav>
       </div>
     </div>
   </header>
 
-  <section id="inicio" class="relative overflow-hidden">
-    <div class="absolute inset-0 -z-10">
-      <img src="https://placehold.co/1600x900/004aad/ffffff?text=Portal+del+Funcionario" alt="Imagen de portada" class="w-full h-full object-cover" />
-      <div class="absolute inset-0 bg-black/50"></div>
-    </div>
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-white">
+  <section id="inicio" class="relative bg-azul text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
       <div class="max-w-3xl">
         <h1 class="text-5xl font-bold leading-tight">Portal del Funcionario</h1>
-        <p class="mt-4 text-lg text-white/90">Corporación Municipal de San José de Maipo — Información, trámites y recursos para nuestros equipos.</p>
+        <p class="mt-4 text-lg text-white/90">
+          Corporación Municipal de San José de Maipo — Información, trámites y recursos para nuestros equipos de salud.
+        </p>
         <div class="mt-8 flex flex-wrap gap-3">
-          <a href="#servicios" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-verde hover:bg-green-700 font-medium text-white">Ver recursos</a>
-          <a href="#contacto" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-naranjo hover:bg-orange-600 font-medium text-white">Contacto</a>
+          <a href="#servicios" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-verde hover:bg-green-700 font-medium text-white">
+            Ver recursos
+          </a>
+          <a href="#contacto" class="inline-flex items-center justify-center px-5 py-3 rounded-xl bg-naranjo hover:bg-orange-600 font-medium text-white">
+            Contáctanos
+          </a>
         </div>
       </div>
     </div>
@@ -50,12 +55,14 @@
   <section id="sobre" class="py-16">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-10 items-center">
       <div>
-        <h2 class="text-3xl font-bold text-azul">¿Quiénes somos?</h2>
-        <p class="mt-4 text-slate-700">La Corporación Municipal de San José de Maipo promueve el bienestar de sus funcionarios mediante este portal, que reúne información institucional, beneficios, documentos oficiales y herramientas de trabajo.</p>
+        <h2 class="text-3xl font-bold text-azul">Bienvenido al Portal del Funcionario</h2>
+        <p class="mt-4 text-slate-700">
+          El Departamento de Salud de la Corporación Municipal de San José de Maipo promueve el acceso a la información de sus funcionarios mediante este portal, que reúne información institucional, carrera funcionaria, permisos, solicitudes y más.
+        </p>
         <ul class="mt-6 space-y-2 text-slate-700 list-disc list-inside">
-          <li>Acceso rápido a documentación y trámites internos.</li>
-          <li>Actualizaciones y noticias institucionales.</li>
-          <li>Material de apoyo y capacitación.</li>
+          <li>Consulta tu carrera funcionaria, permisos y solicitudes en línea.</li>
+          <li>Accede a documentos oficiales, circulares y normativas.</li>
+          <li>Explora capacitaciones, concursos y beneficios laborales.</li>
         </ul>
       </div>
       <div>
@@ -93,20 +100,24 @@
     </div>
   </section>
 
-  <section id="contacto" class="py-16">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-10">
+  <section id="contacto" class="py-16 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-10 items-center">
       <div>
         <h2 class="text-3xl font-bold text-azul">Contacto</h2>
-        <p class="mt-2 text-slate-600">Corporación Municipal de San José de Maipo</p>
+        <p class="mt-2 text-slate-600">Departamento de Salud — Corporación Municipal de San José de Maipo</p>
         <ul class="mt-6 space-y-2 text-slate-700">
+          <li><strong>Teléfono:</strong> +56 2 2861 2345</li>
           <li><strong>Dirección:</strong> Comercio N°19788, San José de Maipo</li>
           <li><strong>Email:</strong> contacto@cormusjm.cl</li>
-          <li><strong>Teléfono:</strong> +56 2 2861 2345</li>
         </ul>
-        <p class="mt-6 text-sm text-slate-500">Para consultas, escribe al correo de contacto institucional.</p>
       </div>
-      <div class="bg-white p-6 rounded-2xl shadow">
-        <p class="text-slate-600">La mensajería directa fue deshabilitada en este portal. Utiliza el correo institucional para canalizar tus solicitudes.</p>
+      <div class="text-slate-600 text-sm">
+        <p>
+          Este portal es una herramienta de información y apoyo para los funcionarios del Departamento de Salud de la Corporación Municipal de San José de Maipo.
+        </p>
+        <p class="mt-3">
+          Para consultas o requerimientos específicos, comunícate directamente con la oficina de Recursos Humanos o con tu jefatura directa.
+        </p>
       </div>
     </div>
   </section>
@@ -120,6 +131,25 @@
       </div>
     </div>
   </footer>
-  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+
+  <script type="module">
+    import {{ createClient }} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', '{SUPABASE_ANON_KEY}');
+    const loginBtn = document.getElementById('loginButton');
+
+    async function checkSession() {{
+      const {{ data: {{ session }} }} = await supabase.auth.getSession();
+      if (session?.user) {{
+        loginBtn.textContent = session.user.email;
+        loginBtn.classList.remove('bg-red-600','hover:bg-red-700');
+        loginBtn.classList.add('bg-green-600','hover:bg-green-700');
+        loginBtn.onclick = () => window.location.href = 'carrera.html';
+      }} else {{
+        loginBtn.onclick = () => window.location.href = 'login.html';
+      }}
+    }}
+    checkSession();
+    document.getElementById('year').textContent=new Date().getFullYear();
+  </script>
 </body>
 </html>
