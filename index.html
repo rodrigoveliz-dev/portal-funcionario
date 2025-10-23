@@ -88,7 +88,7 @@
           <h3 class="text-xl font-semibold text-azul">Calidad y Seguridad Asistencial</h3>
           <p class="mt-2 text-slate-600">Protocolos, manuales y normativas de mejora continua y seguridad del paciente.</p>
         </a>
-        <a href="login.html" class="p-6 bg-white rounded-2xl shadow hover:shadow-md transition block">
+        <a id="linkCarrera" href="login.html" class="p-6 bg-white rounded-2xl shadow hover:shadow-md transition block">
           <h3 class="text-xl font-semibold text-azul">Mi Carrera Funcionaria</h3>
           <p class="mt-2 text-slate-600">Desarrollo profesional, capacitaciones, concursos y beneficios laborales.</p>
         </a>
@@ -136,26 +136,47 @@
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4');
     const loginBtn = document.getElementById('loginButton');
+    const linkCarrera = document.getElementById('linkCarrera');
 
-    // Comportamiento inmediato: si se hace clic sin sesión => ir a login
+    // Por defecto (sin sesión): botón rojo -> login
     loginBtn.onclick = () => window.location.href = 'login.html';
 
-    async function paintSession(session) {
-      if (session?.user) {
-        loginBtn.textContent = session.user.email;
-        loginBtn.classList.remove('bg-red-600','hover:bg-red-700');
-        loginBtn.classList.add('bg-green-600','hover:bg-green-700');
-        loginBtn.onclick = () => window.location.href = 'carrera.html';
-      }
+    function paintAsLogged(email) {
+      loginBtn.textContent = `${email} (cerrar sesión)`;
+      loginBtn.classList.remove('bg-red-600','hover:bg-red-700');
+      loginBtn.classList.add('bg-green-600','hover:bg-green-700');
+      loginBtn.onclick = async () => {
+        await supabase.auth.signOut();
+        window.location.reload();
+      };
     }
 
-    // 1) Comprobar sesión al cargar
-    const { data: { session } } = await supabase.auth.getSession();
-    await paintSession(session);
+    function guardCarrera(session) {
+      linkCarrera.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        if (session?.user) window.location.href = 'carrera.html';
+        else window.location.href = 'login.html';
+      }, { once: true });
+    }
 
-    // 2) Suscribirse a cambios de sesión (por si vuelve del login con session nueva)
-    supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      await paintSession(newSession);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) paintAsLogged(session.user.email);
+    guardCarrera(session);
+
+    supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (newSession?.user) {
+        paintAsLogged(newSession.user.email);
+      } else {
+        loginBtn.textContent = 'Acceder';
+        loginBtn.classList.remove('bg-green-600','hover:bg-green-700');
+        loginBtn.classList.add('bg-red-600','hover:bg-red-700');
+        loginBtn.onclick = () => window.location.href = 'login.html';
+      }
+      linkCarrera.onclick = (ev) => {
+        ev.preventDefault();
+        if (newSession?.user) window.location.href = 'carrera.html';
+        else window.location.href = 'login.html';
+      };
     });
 
     document.getElementById('year').textContent=new Date().getFullYear();
