@@ -38,20 +38,7 @@
 
   <!-- App oculta hasta comprobar sesión -->
   <main id="app" class="hidden max-w-5xl mx-auto px-4 py-8">
-    <p class="text-slate-700">Completa el siguiente formulario para solicitar uso de vehículos institucionales.</p>
-
-    <!-- Controles -->
-    <div class="mt-6 flex items-center gap-2">
-      <a href="https://docs.google.com/forms/d/e/1FAIpQLScz05vKOikDlfNmvacw73_zjhKntAQQEwoaJnwkT7zGX8mQ0g/viewform"
-         target="_blank" rel="noopener noreferrer"
-         class="px-3 py-2 rounded-xl bg-azul text-white text-sm hover:opacity-90 transition">
-        Abrir en pestaña nueva
-      </a>
-      <button id="fitBtn" class="px-3 py-2 rounded-xl border text-sm">Ajustar a ventana</button>
-      <button id="tallBtn" class="px-3 py-2 rounded-xl border text-sm">Altura grande</button>
-    </div>
-
-    <div class="mt-3 rounded-2xl border overflow-hidden shadow">
+    <div class="rounded-2xl border overflow-hidden shadow">
       <iframe
         id="vehForm"
         src="https://docs.google.com/forms/d/e/1FAIpQLScz05vKOikDlfNmvacw73_zjhKntAQQEwoaJnwkT7zGX8mQ0g/viewform?embedded=true"
@@ -62,38 +49,22 @@
         marginwidth="0"
       >Cargando…</iframe>
     </div>
-
-    <p class="mt-2 text-xs text-slate-500">* El alto se ajusta a tu ventana; si el formulario es más largo, usa el scroll dentro del recuadro o el botón “Abrir en pestaña nueva”.</p>
   </main>
 
   <script>
-    // Autoajuste de alto del iframe según el viewport (sin acceder al contenido por CORS)
+    // Autoajuste de alto del iframe según el viewport (sin mostrar controles)
     (function(){
       const iframe = document.getElementById('vehForm');
-      const fitBtn = document.getElementById('fitBtn');
-      const tallBtn = document.getElementById('tallBtn');
-
       function fitToViewport(){
-        // margen aproximado para header/controles/paddings
-        const margin = 240;
+        const margin = 200; // espacio para header y márgenes
         const h = Math.max(window.innerHeight - margin, 600);
         iframe.style.height = h + 'px';
       }
-
-      function setTall(){
-        iframe.style.height = '2000px';
-      }
-
-      // Inicial y al redimensionar
       window.addEventListener('load', fitToViewport);
       window.addEventListener('resize', () => {
-        // simple debounce
         clearTimeout(window.__vehResizeT);
         window.__vehResizeT = setTimeout(fitToViewport, 120);
       });
-
-      fitBtn?.addEventListener('click', fitToViewport);
-      tallBtn?.addEventListener('click', setTall);
     })();
   </script>
 </body>
