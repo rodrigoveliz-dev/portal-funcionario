@@ -5,26 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Solicitud de Insumos — Portal del Funcionario</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
+    .bg-azul{background-color:var(--azul)} .text-azul{color:var(--azul)} .text-verde{color:var(--verde)} .text-naranjo{color:var(--naranjo)}
+  </style>
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4');
-    const EMAIL_RE = /^[^@]+@cormusjm\.cl$/i;
-    const THROTTLE_KEY = 'ins_solic_last_submit';
-    function throttled(){const last=Number(localStorage.getItem(THROTTLE_KEY)||0);return (Date.now()-last)<60000;}
-    function markSubmit(){localStorage.setItem(THROTTLE_KEY,String(Date.now()));}
-    function genCode(){return 'I-'+Math.random().toString(36).slice(2,8).toUpperCase();}
-    window.addEventListener('DOMContentLoaded',()=>{
-      const form=document.getElementById('formIns'); const out=document.getElementById('msg');
-      form.addEventListener('submit', async (e)=>{
-        e.preventDefault(); out.textContent='';
-        if(form.hp.value){ out.textContent='Error de validación.'; return; }
-        if(throttled()){ out.textContent='Espera unos segundos antes de enviar otra solicitud.'; return; }
-        const contacto=form.contacto_email.value.trim(); if(!EMAIL_RE.test(contacto)){ out.textContent='El correo debe ser @cormusjm.cl'; return; }
-        const payload={ contacto_email:contacto, unidad:form.unidad.value.trim(), item:form.item.value.trim(), cantidad: form.cantidad.value?Number(form.cantidad.value):null, justificacion:form.justificacion.value.trim(), codigo:genCode() };
-        out.textContent='Enviando…'; const { error } = await supabase.from('insumos_solicitudes').insert(payload);
-        if(error){ out.textContent='Error: '+error.message; return; } markSubmit(); out.innerHTML=`✅ Enviada. Código <strong>${payload.codigo}</strong>`; form.reset();
-      });
-    });
+
+    async function enforceAuth(){
+      const { data: { session } } = await supabase.auth.getSession();
+      if(!session){
+        window.location.href = 'login.html';
+        return;
+      }
+      document.getElementById('app').classList.remove('hidden');
+      const emailBadge = document.getElementById('userEmail');
+      if(emailBadge) emailBadge.textContent = session.user.email;
+    }
+
+    window.addEventListener('DOMContentLoaded', enforceAuth);
   </script>
 </head>
 <body class="bg-white text-slate-800">
@@ -32,37 +32,40 @@
     <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
       <a href="index.html" class="text-azul font-semibold">← Volver</a>
       <h1 class="text-xl font-bold">Solicitud de Insumos</h1>
-      <span></span>
+      <span id="userEmail" class="text-xs text-slate-500"></span>
     </div>
   </header>
-  <main class="max-w-5xl mx-auto px-4 py-8">
-    <form id="formIns" class="bg-white rounded-2xl border p-6 grid md:grid-cols-2 gap-4" novalidate>
-      <input type="text" name="hp" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;" tabindex="-1" aria-hidden="true" />
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium">Correo de contacto (@cormusjm.cl)</label>
-        <input name="contacto_email" type="email" required class="w-full rounded-xl border p-2" placeholder="tu@cormusjm.cl" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Unidad</label>
-        <input name="unidad" type="text" required class="w-full rounded-xl border p-2" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Ítem solicitado</label>
-        <input name="item" type="text" required class="w-full rounded-xl border p-2" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Cantidad</label>
-        <input name="cantidad" type="number" min="1" class="w-full rounded-xl border p-2" />
-      </div>
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium">Justificación</label>
-        <textarea name="justificacion" rows="4" class="w-full rounded-xl border p-2"></textarea>
-      </div>
-      <div class="md:col-span-2">
-        <button class="px-4 py-2 rounded-xl bg-blue-600 text-white">Enviar solicitud</button>
-        <p id="msg" class="text-sm text-slate-600 mt-2"></p>
-      </div>
-    </form>
+
+  <!-- App oculta hasta comprobar sesión -->
+  <main id="app" class="hidden max-w-5xl mx-auto px-4 py-8">
+    <div class="rounded-2xl border overflow-hidden shadow">
+      <iframe
+        id="insForm"
+        src="https://docs.google.com/forms/d/e/1FAIpQLSfHQLXM8d_fpzkHauNqjyyWrRon80LupeVbAbWRbzX2XU2c0A/viewform?embedded=true"
+        class="w-full"
+        height="1200"
+        frameborder="0"
+        marginheight="0"
+        marginwidth="0"
+      >Cargando…</iframe>
+    </div>
   </main>
+
+  <script>
+    // Autoajuste de alto del iframe según el viewport (sin controles visibles)
+    (function(){
+      const iframe = document.getElementById('insForm');
+      function fitToViewport(){
+        const margin = 200; // espacio para header y márgenes
+        const h = Math.max(window.innerHeight - margin, 600);
+        iframe.style.height = h + 'px';
+      }
+      window.addEventListener('load', fitToViewport);
+      window.addEventListener('resize', () => {
+        clearTimeout(window.__insResizeT);
+        window.__insResizeT = setTimeout(fitToViewport, 120);
+      });
+    })();
+  </script>
 </body>
 </html>
