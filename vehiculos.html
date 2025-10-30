@@ -5,26 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Solicitud de Vehículos — Portal del Funcionario</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
+    .bg-azul{background-color:var(--azul)} .text-azul{color:var(--azul)} .text-verde{color:var(--verde)} .text-naranjo{color:var(--naranjo)}
+  </style>
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     const supabase = createClient('https://ocqoipzgtsanpyzjcsis.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4');
-    const EMAIL_RE = /^[^@]+@cormusjm\.cl$/i;
-    const THROTTLE_KEY = 'veh_solic_last_submit';
-    function throttled(){const last=Number(localStorage.getItem(THROTTLE_KEY)||0);return (Date.now()-last)<60000;}
-    function markSubmit(){localStorage.setItem(THROTTLE_KEY,String(Date.now()));}
-    function genCode(){return 'V-'+Math.random().toString(36).slice(2,8).toUpperCase();}
-    window.addEventListener('DOMContentLoaded',()=>{
-      const form=document.getElementById('formVeh'); const out=document.getElementById('msg');
-      form.addEventListener('submit', async (e)=>{
-        e.preventDefault(); out.textContent='';
-        if(form.hp.value){ out.textContent='Error de validación.'; return; }
-        if(throttled()){ out.textContent='Espera unos segundos antes de enviar otra solicitud.'; return; }
-        const contacto=form.contacto_email.value.trim(); if(!EMAIL_RE.test(contacto)){ out.textContent='El correo debe ser @cormusjm.cl'; return; }
-        const payload={ contacto_email:contacto, unidad:form.unidad.value.trim(), fecha_salida:form.fecha_salida.value||null, hora_salida:form.hora_salida.value||null, destino:form.destino.value.trim(), motivo:form.motivo.value.trim(), codigo:genCode() };
-        out.textContent='Enviando…'; const { error } = await supabase.from('vehiculos_solicitudes').insert(payload);
-        if(error){ out.textContent='Error: '+error.message; return; } markSubmit(); out.innerHTML=`✅ Enviada. Código <strong>${payload.codigo}</strong>`; form.reset();
-      });
-    });
+
+    async function enforceAuth(){
+      const { data: { session } } = await supabase.auth.getSession();
+      if(!session){
+        window.location.href = 'login.html';
+        return;
+      }
+      document.getElementById('app').classList.remove('hidden');
+      const emailBadge = document.getElementById('userEmail');
+      if(emailBadge) emailBadge.textContent = session.user.email;
+    }
+
+    window.addEventListener('DOMContentLoaded', enforceAuth);
   </script>
 </head>
 <body class="bg-white text-slate-800">
@@ -32,41 +32,69 @@
     <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
       <a href="index.html" class="text-azul font-semibold">← Volver</a>
       <h1 class="text-xl font-bold">Solicitud de Vehículos</h1>
-      <span></span>
+      <span id="userEmail" class="text-xs text-slate-500"></span>
     </div>
   </header>
-  <main class="max-w-5xl mx-auto px-4 py-8">
-    <form id="formVeh" class="bg-white rounded-2xl border p-6 grid md:grid-cols-2 gap-4" novalidate>
-      <input type="text" name="hp" autocomplete="off" style="position:absolute;left:-9999px;opacity:0;height:0;width:0;" tabindex="-1" aria-hidden="true" />
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium">Correo de contacto (@cormusjm.cl)</label>
-        <input name="contacto_email" type="email" required class="w-full rounded-xl border p-2" placeholder="tu@cormusjm.cl" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Unidad</label>
-        <input name="unidad" type="text" required class="w-full rounded-xl border p-2" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Fecha de salida</label>
-        <input name="fecha_salida" type="date" class="w-full rounded-xl border p-2" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Hora de salida</label>
-        <input name="hora_salida" type="time" class="w-full rounded-xl border p-2" />
-      </div>
-      <div>
-        <label class="block text-sm font-medium">Destino</label>
-        <input name="destino" type="text" class="w-full rounded-xl border p-2" />
-      </div>
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium">Motivo</label>
-        <textarea name="motivo" rows="4" class="w-full rounded-xl border p-2"></textarea>
-      </div>
-      <div class="md:col-span-2">
-        <button class="px-4 py-2 rounded-xl bg-blue-600 text-white">Enviar solicitud</button>
-        <p id="msg" class="text-sm text-slate-600 mt-2"></p>
-      </div>
-    </form>
+
+  <!-- App oculta hasta comprobar sesión -->
+  <main id="app" class="hidden max-w-5xl mx-auto px-4 py-8">
+    <p class="text-slate-700">Completa el siguiente formulario para solicitar uso de vehículos institucionales.</p>
+
+    <!-- Controles -->
+    <div class="mt-6 flex items-center gap-2">
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLScz05vKOikDlfNmvacw73_zjhKntAQQEwoaJnwkT7zGX8mQ0g/viewform"
+         target="_blank" rel="noopener noreferrer"
+         class="px-3 py-2 rounded-xl bg-azul text-white text-sm hover:opacity-90 transition">
+        Abrir en pestaña nueva
+      </a>
+      <button id="fitBtn" class="px-3 py-2 rounded-xl border text-sm">Ajustar a ventana</button>
+      <button id="tallBtn" class="px-3 py-2 rounded-xl border text-sm">Altura grande</button>
+    </div>
+
+    <div class="mt-3 rounded-2xl border overflow-hidden shadow">
+      <iframe
+        id="vehForm"
+        src="https://docs.google.com/forms/d/e/1FAIpQLScz05vKOikDlfNmvacw73_zjhKntAQQEwoaJnwkT7zGX8mQ0g/viewform?embedded=true"
+        class="w-full"
+        height="1200"
+        frameborder="0"
+        marginheight="0"
+        marginwidth="0"
+      >Cargando…</iframe>
+    </div>
+
+    <p class="mt-2 text-xs text-slate-500">* El alto se ajusta a tu ventana; si el formulario es más largo, usa el scroll dentro del recuadro o el botón “Abrir en pestaña nueva”.</p>
   </main>
+
+  <script>
+    // Autoajuste de alto del iframe según el viewport (sin acceder al contenido por CORS)
+    (function(){
+      const iframe = document.getElementById('vehForm');
+      const fitBtn = document.getElementById('fitBtn');
+      const tallBtn = document.getElementById('tallBtn');
+
+      function fitToViewport(){
+        // margen aproximado para header/controles/paddings
+        const margin = 240;
+        const h = Math.max(window.innerHeight - margin, 600);
+        iframe.style.height = h + 'px';
+      }
+
+      function setTall(){
+        iframe.style.height = '2000px';
+      }
+
+      // Inicial y al redimensionar
+      window.addEventListener('load', fitToViewport);
+      window.addEventListener('resize', () => {
+        // simple debounce
+        clearTimeout(window.__vehResizeT);
+        window.__vehResizeT = setTimeout(fitToViewport, 120);
+      });
+
+      fitBtn?.addEventListener('click', fitToViewport);
+      tallBtn?.addEventListener('click', setTall);
+    })();
+  </script>
 </body>
 </html>
