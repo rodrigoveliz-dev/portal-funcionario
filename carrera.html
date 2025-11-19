@@ -113,8 +113,11 @@
       const puntajeComputadoAnual = Number(data.cap_puntaje_computado_anual ?? 0);
       const balanceFinal          = Number(data.cap_balance_final ?? 0);
 
+      // Nuevo: puntos totales para proceso de carrera funcionaria
+      const puntosTotalesCarrera = puntajeHistorico + puntajeComputadoAnual;
+
       // Definición de puntos totales para grado:
-      const puntosTotales = puntosBienios + puntajeComputadoAnual;
+      const puntosTotales = puntosBienios + puntosTotalesCarrera;
       const grado = gradoDesdePuntos(categoria, puntosTotales);
 
       const el = (id, val) => {
@@ -135,13 +138,14 @@
       el('bienios', bienios);
       el('puntosBienios', puntosBienios);
 
-      // Capacitación (nuevas IDs)
+      // Capacitación
       el('capPuntajeHistorico', puntajeHistorico);
       el('capSaldoAnterior', saldoAnterior);
       el('capPuntajeAnual', puntajeAnual);
       el('capPuntajeTotalPeriodo', puntajeTotalPeriodo);
       el('capPuntajeComputadoAnual', puntajeComputadoAnual);
       el('capBalanceFinal', balanceFinal);
+      el('capPuntosTotalesCarrera', puntosTotalesCarrera);
 
       // Resultado global
       el('puntosTotales', puntosTotales);
@@ -160,6 +164,7 @@
     });
   </script>
 </head>
+
 <body class="bg-white text-slate-800">
   <header class="border-b">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -174,9 +179,12 @@
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-    <h1 class="text-3xl font-bold text-azul mb-6">Resumen de Información</h1>
-    <div id="error" class="text-red-600 mb-4"></div>
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+    <section>
+      <h1 class="text-3xl font-bold text-azul mb-2">Resumen de Información</h1>
+      <p class="text-sm text-slate-600">Visualiza tu información contractual, puntaje de capacitación y cálculo de grado para carrera funcionaria.</p>
+      <div id="error" class="text-red-600 mt-3"></div>
+    </section>
 
     <div class="grid gap-6 lg:grid-cols-3">
       <!-- Identificación -->
@@ -259,12 +267,12 @@
             <dd id="capPuntajeAnual" class="font-medium text-right"></dd>
           </div>
 
-          <!-- Puntaje total del período -->
+          <!-- Puntaje disponible de capacitación -->
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
-              Puntaje total del período
+              Puntaje disponible de capacitación
               <p class="text-xs text-slate-400">
-                Total de puntos considerados para el proceso actual (saldo anterior + puntos del año en curso).
+                Total de puntos disponibles para el proceso actual de capacitación (saldo anterior + puntos del año en curso).
               </p>
             </dt>
             <dd id="capPuntajeTotalPeriodo" class="font-medium text-right"></dd>
@@ -292,6 +300,17 @@
             <dd id="capBalanceFinal" class="font-medium text-right"></dd>
           </div>
 
+          <!-- Puntos totales para proceso de carrera funcionaria -->
+          <div class="grid grid-cols-2 gap-2">
+            <dt class="text-slate-500">
+              Puntos totales para proceso de carrera funcionaria
+              <p class="text-xs text-slate-400">
+                Suma del Puntaje acumulado histórico y el Puntaje computado del año, utilizada para el proceso de carrera funcionaria.
+              </p>
+            </dt>
+            <dd id="capPuntosTotalesCarrera" class="font-medium text-right"></dd>
+          </div>
+
         </dl>
 
         <p class="mt-3 text-xs text-slate-500">
@@ -313,10 +332,83 @@
           </div>
         </dl>
         <p class="mt-3 text-xs text-slate-500">
-          * Puntos totales = Puntos por bienios + Puntaje computado del año.
+          * Puntos totales = Puntos por bienios + Puntos totales para proceso de carrera funcionaria.
         </p>
       </section>
     </div>
+
+    <!-- FAQ / Glosario -->
+    <section class="p-6 rounded-2xl border bg-slate-50">
+      <h2 class="text-xl font-semibold text-azul mb-4">Preguntas frecuentes sobre tu puntaje</h2>
+      <div class="grid md:grid-cols-2 gap-6 text-sm text-slate-700">
+
+        <div>
+          <h3 class="font-semibold text-slate-900">¿Qué es el Puntaje acumulado histórico?</h3>
+          <p class="mt-1">
+            Es el total de puntos de capacitación que tienes validados al cierre del proceso anterior.
+            Refleja todo lo que has acumulado en tu carrera antes del año actual.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-slate-900">¿Qué es el Saldo disponible del año anterior?</h3>
+          <p class="mt-1">
+            Corresponde a los puntos excedentes que quedaron del período anterior y que pueden ser
+            utilizados en el proceso de capacitación del año actual.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-slate-900">¿Qué significa Puntaje del año en curso?</h3>
+          <p class="mt-1">
+            Son los puntos que has presentado durante el año vigente, de acuerdo a las actividades
+            de capacitación realizadas y reconocidas por RRHH.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-slate-900">¿Qué es el Puntaje disponible de capacitación?</h3>
+          <p class="mt-1">
+            Es la suma del saldo disponible del año anterior y el puntaje obtenido en el año actual.
+            Representa los puntos totales que tienes disponibles para el proceso de capacitación del período.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-slate-900">¿Qué es el Puntaje computado del año?</h3>
+          <p class="mt-1">
+            Es el total de puntos del año en curso que finalmente se contabilizan, aplicando los criterios y
+            topes establecidos en la normativa interna de capacitación.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-slate-900">¿Qué significa Balance final de puntos?</h3>
+          <p class="mt-1">
+            Son los puntos que sobran luego de aplicar las reglas del proceso anual. Quedan como reserva para
+            ser considerados en procesos de evaluación futuros.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-slate-900">¿Qué son los Puntos totales para proceso de carrera funcionaria?</h3>
+          <p class="mt-1">
+            Corresponden a la suma del Puntaje acumulado histórico y el Puntaje computado del año.
+            Este valor es el que se utiliza como base para el proceso de carrera funcionaria.
+          </p>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-slate-900">¿Cómo se calculan los Puntos totales que se muestran en Resultado?</h3>
+          <p class="mt-1">
+            Los Puntos totales corresponden a la suma de los Puntos por bienios y los
+            Puntos totales para proceso de carrera funcionaria. Este resultado se utiliza
+            para estimar tu grado de encasillamiento según los tramos definidos.
+          </p>
+        </div>
+
+      </div>
+    </section>
   </main>
 
   <footer class="border-t">
