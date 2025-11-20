@@ -179,73 +179,110 @@
     }
 
     // ===== LIQUIDACIONES =====
-    async function loadLiquidaciones(email) {
-      const tbody = document.getElementById('liqTbody');
-      const msg = document.getElementById('liqMsg');
-      if (!tbody) return;
+   async function loadLiquidaciones(email) {
+  const tbody = document.getElementById('liqTbody');
+  const msg = document.getElementById('liqMsg');
+  if (!tbody) return;
 
-      if (!email) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">Ingresa un email para ver el historial.</td></tr>`;
-        return;
-      }
+  if (!email) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">Ingresa un email para ver el historial.</td></tr>`;
+    return;
+  }
 
-      tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">Cargando…</td></tr>`;
-      msg.textContent = '';
+  tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">Cargando…</td></tr>`;
+  msg.textContent = '';
 
-      const { data, error } = await supabase
+  const { data, error } = await supabase
+    .from('liquidaciones')
+    .select('anio, mes, storage_path, uploaded_at, uploaded_by')
+    .eq('email', email)
+    .order('anio', { ascending:false })
+    .order('mes', { ascending:false });
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-red-600 text-xs">Error al cargar liquidaciones.</td></tr>`;
+    console.error(error);
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">No hay liquidaciones registradas para este funcionario.</td></tr>`;
+    return;
+  }
+
+  const meses = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+  tbody.innerHTML = '';
+  for (const row of data) {
+    const tr = document.createElement('tr');
+    tr.className = 'border-t';
+
+    const fecha = row.uploaded_at ? new Date(row.uploaded_at).toLocaleDateString('es-CL') : '';
+
+    tr.innerHTML = `
+      <td class="px-3 py-2 text-sm">${row.anio}</td>
+      <td class="px-3 py-2 text-sm">${meses[row.mes] || row.mes}</td>
+      <td class="px-3 py-2 text-sm">${fecha}</td>
+      <td class="px-3 py-2 text-xs">${row.uploaded_by || ''}</td>
+      <td class="px-3 py-2 text-right space-x-2">
+        <button class="btn-ver px-3 py-1 rounded-full border text-xs">Ver PDF</button>
+        <button class="btn-del px-3 py-1 rounded-full border text-xs text-red-600 border-red-300">Eliminar</button>
+      </td>
+    `;
+
+    const btnVer = tr.querySelector('.btn-ver');
+    const btnDel = tr.querySelector('.btn-del');
+
+    btnVer.addEventListener('click', async () => {
+      const { data: signed, error: urlError } = await supabase.storage
         .from('liquidaciones')
-        .select('anio, mes, storage_path, uploaded_at, uploaded_by')
-        .eq('email', email)
-        .order('anio', { ascending:false })
-        .order('mes', { ascending:false });
+        .createSignedUrl(row.storage_path, 60);
 
-      if (error) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-red-600 text-xs">Error al cargar liquidaciones.</td></tr>`;
-        console.error(error);
+      if (urlError) {
+        alert('No se pudo generar el enlace del PDF.');
+        console.error(urlError);
+        return;
+      }
+      window.open(signed.signedUrl, '_blank');
+    });
+
+    btnDel.addEventListener('click', async () => {
+      if (!confirm(`¿Eliminar liquidación de ${meses[row.mes] || row.mes} ${row.anio}? Esta acción no se puede deshacer.`)) {
         return;
       }
 
-      if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">No hay liquidaciones registradas para este funcionario.</td></tr>`;
+      msg.textContent = 'Eliminando liquidación…';
+
+      // 1) Borrar archivo del storage
+      const { error: storageError } = await supabase.storage
+        .from('liquidaciones')
+        .remove([row.storage_path]);
+
+      if (storageError) {
+        console.error('Error eliminando archivo de storage', storageError);
+        msg.textContent = 'Error eliminando archivo del storage: ' + (storageError.message || '');
         return;
       }
 
-      const meses = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+      // 2) Borrar registro en la tabla
+      const { error: dbError } = await supabase
+        .from('liquidaciones')
+        .delete()
+        .match({ email, anio: row.anio, mes: row.mes });
 
-      tbody.innerHTML = '';
-      for (const row of data) {
-        const tr = document.createElement('tr');
-        tr.className = 'border-t';
-
-        const fecha = row.uploaded_at ? new Date(row.uploaded_at).toLocaleDateString('es-CL') : '';
-
-        tr.innerHTML = `
-          <td class="px-3 py-2 text-sm">${row.anio}</td>
-          <td class="px-3 py-2 text-sm">${meses[row.mes] || row.mes}</td>
-          <td class="px-3 py-2 text-sm">${fecha}</td>
-          <td class="px-3 py-2 text-xs">${row.uploaded_by || ''}</td>
-          <td class="px-3 py-2 text-right">
-            <button class="px-3 py-1 rounded-full border text-xs">Ver PDF</button>
-          </td>
-        `;
-
-        const btn = tr.querySelector('button');
-        btn.addEventListener('click', async () => {
-          const { data: signed, error: urlError } = await supabase.storage
-            .from('liquidaciones')
-            .createSignedUrl(row.storage_path, 60);
-
-          if (urlError) {
-            alert('No se pudo generar el enlace del PDF.');
-            console.error(urlError);
-            return;
-          }
-          window.open(signed.signedUrl, '_blank');
-        });
-
-        tbody.appendChild(tr);
+      if (dbError) {
+        console.error('Error eliminando fila en liquidaciones', dbError);
+        msg.textContent = 'Archivo borrado del storage, pero hubo un problema borrando el registro en la base de datos: ' + (dbError.message || '');
+        return;
       }
-    }
+
+      msg.textContent = 'Liquidación eliminada correctamente.';
+      await loadLiquidaciones(email);
+    });
+
+    tbody.appendChild(tr);
+  }
+}
 
    async function uploadLiquidacion(adminEmail) {
   const emailInput = document.getElementById('liqEmail');
@@ -546,4 +583,5 @@
   </script>
 </body>
 </html>
+
 
