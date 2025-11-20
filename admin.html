@@ -15,10 +15,10 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    /* 🚀 PROYECTO CORRECTO (mismo que carrera.html) */
-    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
+    /* 🚀 PROYECTO VIEJO (vzmtiv...) */
+    const SUPABASE_URL = "https://vzmtivcsfrdpmhzcdxvl.supabase.co";
     const SUPABASE_ANON_KEY =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6bXRpdmNzZnJkcG1oemNkeHZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA1MzU1MTgsImV4cCI6MjA0NjExMTUxOH0.N_XhccGtb7SY3mlfjyUCEF0OxV1CqCcRnOt7p5Oe1qU";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -56,9 +56,9 @@
       if (SUPER_ADMINS.includes(email)) return session.user;
 
       const { data, error } = await supabase.from("admins").select("email");
-      if (error) return session.user;
+      if (error) return session.user; // si falla, dejamos pasar y RLS manda
 
-      const isAdmin = data.some(a => a.email?.toLowerCase().trim() === email);
+      const isAdmin = (data || []).some(a => a.email?.toLowerCase().trim() === email);
       if (!isAdmin) {
         document.getElementById("notAdmin").classList.remove("hidden");
         document.getElementById("adminApp").classList.add("hidden");
@@ -107,17 +107,17 @@
         const tr = document.createElement("tr");
         tr.className = "row cursor-pointer";
         tr.innerHTML = `
-          <td class="px-3 py-2">${r.email}</td>
-          <td class="px-3 py-2">${r.categoria ?? ""}</td>
-          <td class="px-3 py-2">${r.tipo_contrato ?? ""}</td>
-          <td class="px-3 py-2">${r.fecha_inicio_contrato?.slice(0,10) ?? ""}</td>
-          <td class="px-3 py-2">${r.fecha_ingreso_publico?.slice(0,10) ?? ""}</td>
-          <td class="px-3 py-2">${r.cap_puntaje_historico ?? ""}</td>
-          <td class="px-3 py-2">${r.cap_saldo_anterior ?? ""}</td>
-          <td class="px-3 py-2">${r.cap_puntaje_anual ?? ""}</td>
-          <td class="px-3 py-2">${r.cap_puntaje_total_periodo ?? ""}</td>
-          <td class="px-3 py-2">${r.cap_puntaje_computado_anual ?? ""}</td>
-          <td class="px-3 py-2">${r.cap_balance_final ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.email}</td>
+          <td class="px-3 py-2 text-sm">${r.categoria ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.tipo_contrato ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.fecha_inicio_contrato?.slice(0,10) ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.fecha_ingreso_publico?.slice(0,10) ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_puntaje_historico ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_saldo_anterior ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_puntaje_anual ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_puntaje_total_periodo ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_puntaje_computado_anual ?? ""}</td>
+          <td class="px-3 py-2 text-sm">${r.cap_balance_final ?? ""}</td>
         `;
 
         tr.addEventListener("click", () => {
@@ -198,6 +198,7 @@
 
       if (error) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-600 text-xs">Error cargando</td></tr>`;
+        console.error(error);
         return;
       }
 
@@ -266,6 +267,7 @@
 
       if (e1) {
         msg.textContent = "Error al subir archivo.";
+        console.error(e1);
         return;
       }
 
@@ -281,6 +283,7 @@
 
       if (e2) {
         msg.textContent = "Error al registrar BD.";
+        console.error(e2);
         return;
       }
 
