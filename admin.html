@@ -16,23 +16,58 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const cols=['email','categoria','fecha_inicio_contrato','tipo_contrato','fecha_ingreso_publico','cap_totales','cap_encasillados','cap_totales_corte','fecha_ultimo_corte'];
+    const cols=[
+      'email',
+      'categoria',
+      'fecha_inicio_contrato',
+      'tipo_contrato',
+      'fecha_ingreso_publico',
+      'cap_totales',
+      'cap_encasillados',
+      'cap_totales_corte',
+      'fecha_ultimo_corte'
+    ];
 
+    // ===== Validación de administrador (corregida) =====
     async function mustBeAdmin(){
       const { data: { session } } = await supabase.auth.getSession();
-      if(!session){ window.location.href='login.html'; return null; }
+      if(!session){
+        window.location.href='login.html';
+        return null;
+      }
+
+      // Mostrar email en cabecera
       document.getElementById('userEmail').textContent = session.user.email;
-      const { data, error } = await supabase.from('admins').select('email').eq('email', session.user.email).maybeSingle();
-      if(error){ document.getElementById('err').textContent='Error validando rol: '+error.message; return null; }
-      if(!data){
+
+      const currentEmail = session.user.email.toLowerCase().trim();
+
+      // Traemos todos los admins y comparamos en JS
+      const { data: admins, error } = await supabase
+        .from('admins')
+        .select('email');
+
+      if(error){
+        document.getElementById('err').textContent='Error validando rol: '+error.message;
+        console.error(error);
+        return null;
+      }
+
+      const isAdmin = (admins || []).some(a =>
+        a.email &&
+        a.email.toLowerCase().trim() === currentEmail
+      );
+
+      if(!isAdmin){
         document.getElementById('notAdmin').classList.remove('hidden');
         document.getElementById('adminApp').classList.add('hidden');
         return null;
       }
+
       return session.user;
     }
 
     function toInput(id){ return document.getElementById(id) }
+
     function setForm(row){
       for(const c of cols){
         const v=row?.[c] ?? '';
@@ -44,11 +79,18 @@
 
     async function loadTable(){
       const q=document.getElementById('q').value.trim();
-      let query=supabase.from('funcionarios').select(cols.join(','), { count:'exact' }).order('email');
+      let query=supabase
+        .from('funcionarios')
+        .select(cols.join(','), { count:'exact' })
+        .order('email');
       if(q) query=query.ilike('email', `%${q}%`);
       const { data, error } = await query;
       const tbody=document.getElementById('tbody'); tbody.innerHTML='';
-      if(error){ document.getElementById('err').textContent = error.message; return; }
+      if(error){
+        document.getElementById('err').textContent = error.message;
+        console.error(error);
+        return;
+      }
       for(const r of (data||[])){
         const tr=document.createElement('tr'); tr.className='row cursor-pointer';
         tr.innerHTML = `
@@ -61,7 +103,11 @@
           <td class="px-3 py-2 text-sm">${r.cap_encasillados??0}</td>
           <td class="px-3 py-2 text-sm">${r.cap_totales_corte??0}</td>
           <td class="px-3 py-2 text-sm">${(r.fecha_ultimo_corte||'').slice(0,10)}</td>`;
-        tr.addEventListener('click', ()=>{ setForm(r); document.getElementById('email').readOnly=true; document.getElementById('mode').textContent='Editar funcionario'; });
+        tr.addEventListener('click', ()=>{
+          setForm(r);
+          document.getElementById('email').readOnly=true;
+          document.getElementById('mode').textContent='Editar funcionario';
+        });
         tbody.appendChild(tr);
       }
     }
@@ -70,13 +116,25 @@
       const row={};
       for(const c of cols) row[c]=toInput(c)?.value || null;
       if(!row.email){ alert('Email es obligatorio'); return; }
-      for(const n of ['cap_totales','cap_encasillados','cap_totales_corte']){ row[n]=row[n]!==null && row[n]!=='' ? Number(row[n]) : null; }
+      for(const n of ['cap_totales','cap_encasillados','cap_totales_corte']){
+        row[n]=row[n]!==null && row[n]!=='' ? Number(row[n]) : null;
+      }
       const { error } = await supabase.from('funcionarios').upsert(row).select();
-      if(error){ alert('Error al guardar: '+error.message); return; }
-      await loadTable(); alert('Guardado'); clearForm();
+      if(error){
+        alert('Error al guardar: '+error.message);
+        console.error(error);
+        return;
+      }
+      await loadTable();
+      alert('Guardado');
+      clearForm();
     }
 
-    function clearForm(){ setForm(null); document.getElementById('email').readOnly=false; document.getElementById('mode').textContent='Nuevo funcionario' }
+    function clearForm(){
+      setForm(null);
+      document.getElementById('email').readOnly=false;
+      document.getElementById('mode').textContent='Nuevo funcionario';
+    }
 
     // ===== Liquidaciones: funciones nuevas =====
     async function loadLiquidaciones(email){
@@ -226,7 +284,7 @@
       document.getElementById('new').addEventListener('click', clearForm);
       document.getElementById('logout').addEventListener('click', async ()=>{
         await supabase.auth.signOut();
-        window.location.href='login.html'
+        window.location.href='login.html';
       });
 
       // Liquidaciones: enlazar eventos
@@ -426,8 +484,12 @@
   </section>
 
   <footer class="border-t">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600">© <span id="year"></span> Corporación Municipal San José de Maipo</div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-sm text-slate-600">
+      © <span id="year"></span> Corporación Municipal San José de Maipo
+    </div>
   </footer>
-  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+  <script>
+    document.getElementById('year').textContent=new Date().getFullYear();
+  </script>
 </body>
 </html>
