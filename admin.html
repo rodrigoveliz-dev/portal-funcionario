@@ -247,73 +247,73 @@
       }
     }
 
-    async function uploadLiquidacion(adminEmail) {
-      const emailInput = document.getElementById('liqEmail');
-      const anioInput  = document.getElementById('liqAnio');
-      const mesSelect  = document.getElementById('liqMes');
-      const fileInput  = document.getElementById('liqFile');
-      const msg        = document.getElementById('liqMsg');
+   async function uploadLiquidacion(adminEmail) {
+  const emailInput = document.getElementById('liqEmail');
+  const anioInput  = document.getElementById('liqAnio');
+  const mesSelect  = document.getElementById('liqMes');
+  const fileInput  = document.getElementById('liqFile');
+  const msg        = document.getElementById('liqMsg');
 
-      const email = (emailInput?.value || '').trim();
-      const anio  = Number(anioInput?.value || '');
-      const mes   = Number(mesSelect?.value || '');
-      const file  = fileInput?.files?.[0];
+  const email = (emailInput?.value || '').trim();
+  const anio  = Number(anioInput?.value || '');
+  const mes   = Number(mesSelect?.value || '');
+  const file  = fileInput?.files?.[0];
 
-      msg.textContent = '';
+  msg.textContent = '';
 
-      if (!email) {
-        msg.textContent = 'Debes ingresar el email del funcionario.';
-        return;
-      }
-      if (!anio || !mes) {
-        msg.textContent = 'Debes indicar año y mes.';
-        return;
-      }
-      if (!file) {
-        msg.textContent = 'Selecciona un archivo PDF.';
-        return;
-      }
+  if (!email) {
+    msg.textContent = 'Debes ingresar el email del funcionario.';
+    return;
+  }
+  if (!anio || !mes) {
+    msg.textContent = 'Debes indicar año y mes.';
+    return;
+  }
+  if (!file) {
+    msg.textContent = 'Selecciona un archivo PDF.';
+    return;
+  }
 
-      const mesStr = String(mes).padStart(2,'0');
-      const path = `${email}/${anio}/${mesStr}.pdf`;
+  const mesStr = String(mes).padStart(2,'0');
+  const path = `${email}/${anio}/${mesStr}.pdf`;
 
-      msg.textContent = 'Subiendo archivo al storage…';
+  msg.textContent = 'Subiendo archivo al storage…';
 
-      const { error: uploadError } = await supabase.storage
-        .from('liquidaciones')
-        .upload(path, file, { upsert:true });
+  const { error: uploadError } = await supabase.storage
+    .from('liquidaciones')
+    .upload(path, file, { upsert:true });
 
-      if (uploadError) {
-        msg.textContent = 'Error al subir archivo al storage.';
-        console.error(uploadError);
-        return;
-      }
+  if (uploadError) {
+    console.error('UPLOAD ERROR', uploadError);
+    msg.textContent = 'Error al subir archivo al storage: ' + (uploadError.message || '');
+    return;
+  }
 
-      msg.textContent = 'Registrando liquidación en la base de datos…';
+  msg.textContent = 'Registrando liquidación en la base de datos…';
 
-      const { error: upsertError } = await supabase
-        .from('liquidaciones')
-        .upsert({
-          email,
-          anio,
-          mes,
-          storage_path: path,
-          uploaded_by: adminEmail || null
-        }, {
-          onConflict: 'email,anio,mes'
-        });
+  const { error: upsertError } = await supabase
+    .from('liquidaciones')
+    .upsert({
+      email,
+      anio,
+      mes,
+      storage_path: path,
+      uploaded_by: adminEmail || null
+    }, {
+      onConflict: 'email,anio,mes'
+    });
 
-      if (upsertError) {
-        msg.textContent = 'Error al registrar liquidación en la base de datos.';
-        console.error(upsertError);
-        return;
-      }
+  if (upsertError) {
+    console.error('UPSERT ERROR', upsertError);
+    msg.textContent = 'Error al registrar liquidación en la base de datos: ' + (upsertError.message || '');
+    return;
+  }
 
-      msg.textContent = 'Liquidación subida/actualizada correctamente.';
-      fileInput.value = '';
+  msg.textContent = 'Liquidación subida/actualizada correctamente.';
+  fileInput.value = '';
 
-      await loadLiquidaciones(email);
-    }
+  await loadLiquidaciones(email);
+}
 
     window.addEventListener('DOMContentLoaded', async () => {
       const user = await mustBeAdmin();
@@ -546,3 +546,4 @@
   </script>
 </body>
 </html>
+
