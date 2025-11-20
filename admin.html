@@ -16,7 +16,14 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const cols=[
+    // 🚨 SUPER ADMINS que siempre pueden entrar al panel
+    const SUPER_ADMINS = [
+      'rodrigo.veliz@cormusjm.cl'
+      // Puedes agregar más correos acá si quieres:
+      // 'otra.persona@cormusjm.cl'
+    ];
+
+    const cols = [
       'email',
       'categoria',
       'fecha_inicio_contrato',
@@ -28,7 +35,6 @@
       'fecha_ultimo_corte'
     ];
 
-    // ===== Validación de administrador (corregida) =====
     async function mustBeAdmin(){
       const { data: { session } } = await supabase.auth.getSession();
       if(!session){
@@ -36,28 +42,32 @@
         return null;
       }
 
-      // Mostrar email en cabecera
-      document.getElementById('userEmail').textContent = session.user.email;
+      const email = session.user.email.toLowerCase().trim();
+      document.getElementById('userEmail').textContent = email;
 
-      const currentEmail = session.user.email.toLowerCase().trim();
+      // 1) Si está en SUPER_ADMINS, pasa directo
+      if (SUPER_ADMINS.includes(email)) {
+        return session.user;
+      }
 
-      // Traemos todos los admins y comparamos en JS
-      const { data: admins, error } = await supabase
+      // 2) Si no está hardcodeado, validamos contra la tabla admins
+      const { data, error } = await supabase
         .from('admins')
         .select('email');
 
-      if(error){
+      if (error) {
         document.getElementById('err').textContent='Error validando rol: '+error.message;
         console.error(error);
+        document.getElementById('notAdmin').classList.remove('hidden');
+        document.getElementById('adminApp').classList.add('hidden');
         return null;
       }
 
-      const isAdmin = (admins || []).some(a =>
-        a.email &&
-        a.email.toLowerCase().trim() === currentEmail
+      const isAdmin = (data || []).some(a =>
+        a.email && a.email.toLowerCase().trim() === email
       );
 
-      if(!isAdmin){
+      if (!isAdmin) {
         document.getElementById('notAdmin').classList.remove('hidden');
         document.getElementById('adminApp').classList.add('hidden');
         return null;
@@ -79,10 +89,7 @@
 
     async function loadTable(){
       const q=document.getElementById('q').value.trim();
-      let query=supabase
-        .from('funcionarios')
-        .select(cols.join(','), { count:'exact' })
-        .order('email');
+      let query=supabase.from('funcionarios').select(cols.join(','), { count:'exact' }).order('email');
       if(q) query=query.ilike('email', `%${q}%`);
       const { data, error } = await query;
       const tbody=document.getElementById('tbody'); tbody.innerHTML='';
@@ -136,7 +143,7 @@
       document.getElementById('mode').textContent='Nuevo funcionario';
     }
 
-    // ===== Liquidaciones: funciones nuevas =====
+    // ===== Liquidaciones: funciones =====
     async function loadLiquidaciones(email){
       const tbody = document.getElementById('liqTbody');
       const msg = document.getElementById('liqMsg');
