@@ -2,21 +2,30 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Administrador RRHH</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script type="module">
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  <title>Administrador RRHH — Portal del Funcionario</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --verde:#3cb043; --azul:#004aad; --naranjo:#f57c00; }
+    .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)}
+    .badge{padding:.2rem .5rem;border-radius:.5rem;background:#eef2ff}
+    .row:hover{background:#f8fafc}
+  </style>
 
-    const SUPABASE_URL = "https://vzmtivcsfrdpmhzcdxvl.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6bXRpdmNzZnJkcG1oemNkeHZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA1MzU1MTgsImV4cCI6MjA0NjExMTUxOH0.N_XhccGtb7SY3mlfjyUCEF0OxV1CqCcRnOt7p5Oe1qU";
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    /* 🚀 PROYECTO CORRECTO (mismo que carrera.html) */
+    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
+    const SUPABASE_ANON_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const SUPER_ADMINS = [
-      'rodrigo.veliz@cormusjm.cl'
-    ];
+    /* Admins que SIEMPRE pueden entrar */
+    const SUPER_ADMINS = ['rodrigo.veliz@cormusjm.cl'];
 
-    // Columnas REALES de tu tabla "funcionarios"
+    /* Columnas reales */
     const cols = [
       'email',
       'categoria',
@@ -31,44 +40,30 @@
       'cap_balance_final'
     ];
 
+    /* ===========================
+       VALIDACIÓN DE ADMIN SEGURA
+       =========================== */
     async function mustBeAdmin() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        window.location.href = 'login.html';
+        window.location.href = "login.html";
         return null;
       }
 
       const email = session.user.email.toLowerCase().trim();
-      document.getElementById('userEmail').textContent = email;
+      document.getElementById("userEmail").textContent = email;
 
-      // 1) Si es SUPER_ADMIN, pasa directo
-      if (SUPER_ADMINS.includes(email)) {
-        return session.user;
-      }
+      if (SUPER_ADMINS.includes(email)) return session.user;
 
-      // 2) Validar contra la tabla admins
-      const { data, error } = await supabase
-        .from('admins')
-        .select('email');
+      const { data, error } = await supabase.from("admins").select("email");
+      if (error) return session.user;
 
-      if (error) {
-        document.getElementById('err').textContent = 'Error validando rol: ' + error.message;
-        console.error(error);
-        document.getElementById('notAdmin').classList.remove('hidden');
-        document.getElementById('adminApp').classList.add('hidden');
-        return null;
-      }
-
-      const isAdmin = (data || []).some(a =>
-        a.email && a.email.toLowerCase().trim() === email
-      );
-
+      const isAdmin = data.some(a => a.email?.toLowerCase().trim() === email);
       if (!isAdmin) {
-        document.getElementById('notAdmin').classList.remove('hidden');
-        document.getElementById('adminApp').classList.add('hidden');
+        document.getElementById("notAdmin").classList.remove("hidden");
+        document.getElementById("adminApp").classList.add("hidden");
         return null;
       }
-
       return session.user;
     }
 
@@ -76,561 +71,457 @@
 
     function setForm(row) {
       for (const c of cols) {
-        const v = row?.[c] ?? '';
-        const i = toInput(c); if (!i) continue;
-        if (i.type === 'date') {
-          i.value = v ? String(v).slice(0, 10) : '';
-        } else {
-          i.value = v;
-        }
+        const v = row?.[c] ?? "";
+        const el = toInput(c);
+        if (!el) continue;
+        if (el.type === "date") el.value = v ? String(v).slice(0,10) : "";
+        else el.value = v;
       }
     }
 
+    /* ===========================
+       CARGAR TABLA DE FUNCIONARIOS
+       =========================== */
     async function loadTable() {
-      const q = document.getElementById('q').value.trim();
-      let query = supabase
-        .from('funcionarios')
-        .select(cols.join(','), { count: 'exact' })
-        .order('email');
+      const searchValue = document.getElementById("q").value.trim();
 
-      if (q) query = query.ilike('email', `%${q}%`);
+      let query = supabase
+        .from("funcionarios")
+        .select(cols.join(","), { count: "exact" })
+        .order("email");
+
+      if (searchValue !== "") {
+        query = query.ilike("email", `%${searchValue}%`);
+      }
 
       const { data, error } = await query;
-      const tbody = document.getElementById('tbody'); 
-      tbody.innerHTML = '';
+      const tbody = document.getElementById("tbody");
+      tbody.innerHTML = "";
 
       if (error) {
-        document.getElementById('err').textContent = error.message;
         console.error(error);
         return;
       }
 
-      document.getElementById('err').textContent = '';
-
-      for (const r of data) {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50 cursor-pointer';
-
+      (data || []).forEach(r => {
+        const tr = document.createElement("tr");
+        tr.className = "row cursor-pointer";
         tr.innerHTML = `
-          <td class="px-3 py-2 text-sm">${r.email ?? ''}</td>
-          <td class="px-3 py-2 text-sm">${r.categoria ?? ''}</td>
-          <td class="px-3 py-2 text-sm">${r.tipo_contrato ?? ''}</td>
-          <td class="px-3 py-2 text-sm">${r.fecha_inicio_contrato ? String(r.fecha_inicio_contrato).slice(0,10) : ''}</td>
-          <td class="px-3 py-2 text-sm">${r.fecha_ingreso_publico ? String(r.fecha_ingreso_publico).slice(0,10) : ''}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_puntaje_historico ?? ''}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_saldo_anterior ?? ''}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_puntaje_anual ?? ''}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_puntaje_total_periodo ?? ''}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_puntaje_computado_anual ?? ''}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_balance_final ?? ''}</td>
+          <td class="px-3 py-2">${r.email}</td>
+          <td class="px-3 py-2">${r.categoria ?? ""}</td>
+          <td class="px-3 py-2">${r.tipo_contrato ?? ""}</td>
+          <td class="px-3 py-2">${r.fecha_inicio_contrato?.slice(0,10) ?? ""}</td>
+          <td class="px-3 py-2">${r.fecha_ingreso_publico?.slice(0,10) ?? ""}</td>
+          <td class="px-3 py-2">${r.cap_puntaje_historico ?? ""}</td>
+          <td class="px-3 py-2">${r.cap_saldo_anterior ?? ""}</td>
+          <td class="px-3 py-2">${r.cap_puntaje_anual ?? ""}</td>
+          <td class="px-3 py-2">${r.cap_puntaje_total_periodo ?? ""}</td>
+          <td class="px-3 py-2">${r.cap_puntaje_computado_anual ?? ""}</td>
+          <td class="px-3 py-2">${r.cap_balance_final ?? ""}</td>
         `;
-        tr.addEventListener('click', () => {
-          setForm(r);
-          document.getElementById('email').readOnly = true;
-          document.getElementById('mode').textContent = 'Editar funcionario';
 
-          const liqEmailInput = document.getElementById('liqEmail');
-          if (liqEmailInput) {
-            liqEmailInput.value = r.email || '';
-            const email = liqEmailInput.value.trim();
-            if (email) {
-              loadLiquidaciones(email);
-            }
-          }
+        tr.addEventListener("click", () => {
+          setForm(r);
+          document.getElementById("email").readOnly = true;
+          document.getElementById("mode").textContent = "Editar funcionario";
+
+          document.getElementById("liqEmail").value = r.email;
+          loadLiquidaciones(r.email);
         });
+
         tbody.appendChild(tr);
-      }
+      });
     }
 
+    /* GUARDAR FUNCIONARIO */
     async function save() {
       const row = {};
-      for (const c of cols) {
-        row[c] = toInput(c)?.value || null;
-      }
-      if (!row.email) {
-        alert('Email es obligatorio');
-        return;
-      }
+      for (const c of cols) row[c] = toInput(c)?.value || null;
 
-      // Campos numéricos
-      for (const n of [
-        'cap_puntaje_historico',
-        'cap_saldo_anterior',
-        'cap_puntaje_anual',
-        'cap_puntaje_total_periodo',
-        'cap_puntaje_computado_anual',
-        'cap_balance_final'
-      ]) {
-        if (row[n] !== null && row[n] !== '') {
-          row[n] = Number(row[n]);
-        } else {
-          row[n] = null;
-        }
-      }
+      if (!row.email) return alert("Email obligatorio");
 
-      const { error } = await supabase.from('funcionarios').upsert(row).select();
+      const numberFields = [
+        "cap_puntaje_historico", "cap_saldo_anterior", "cap_puntaje_anual",
+        "cap_puntaje_total_periodo", "cap_puntaje_computado_anual", "cap_balance_final"
+      ];
+
+      numberFields.forEach(f => row[f] = row[f] ? Number(row[f]) : null);
+
+      const { error } = await supabase.from("funcionarios").upsert(row);
       if (error) {
-        alert('Error al guardar: ' + error.message);
-        console.error(error);
+        alert("Error al guardar: " + error.message);
         return;
       }
-      await loadTable();
-      alert('Guardado');
+
+      alert("Guardado correctamente");
       clearForm();
+      loadTable();
     }
 
     function clearForm() {
       setForm(null);
-      document.getElementById('email').readOnly = false;
-      document.getElementById('mode').textContent = 'Nuevo funcionario';
+      document.getElementById("email").readOnly = false;
+      document.getElementById("mode").textContent = "Nuevo funcionario";
     }
 
-    // ===== FUNCIONARIO: ELIMINAR =====
-
+    /* ELIMINAR FUNCIONARIO */
     async function deleteFuncionario() {
-      const emailInput = document.getElementById('email');
-      const email = (emailInput?.value || '').trim();
+      const email = document.getElementById("email").value.trim();
+      if (!email) return alert("Selecciona un funcionario primero.");
 
+      if (!confirm(`Eliminar funcionario ${email}?`)) return;
+
+      const { error } = await supabase.from("funcionarios").delete().eq("email", email);
+      if (error) return alert("Error eliminando: " + error.message);
+
+      alert("Eliminado correctamente");
+      clearForm();
+      loadTable();
+    }
+
+    /* ===========================
+       LIQUIDACIONES
+       =========================== */
+    async function loadLiquidaciones(email) {
+      const tbody = document.getElementById("liqTbody");
       if (!email) {
-        alert('Debes seleccionar un funcionario (o ingresar el email) para eliminar.');
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-xs text-slate-500">Ingresa un correo</td></tr>`;
         return;
       }
 
-      const ok = confirm(`¿Eliminar definitivamente al funcionario con email ${email}? Esta acción no se puede deshacer.`);
-      if (!ok) return;
-
-      const { error } = await supabase
-        .from('funcionarios')
-        .delete()
-        .eq('email', email);
+      const { data, error } = await supabase
+        .from("liquidaciones")
+        .select("*")
+        .eq("email", email)
+        .order("anio", { ascending: false })
+        .order("mes", { ascending: false });
 
       if (error) {
-        console.error('Error al eliminar funcionario', error);
-        alert('Error al eliminar: ' + error.message);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-600 text-xs">Error cargando</td></tr>`;
         return;
       }
 
-      alert('Funcionario eliminado correctamente.');
-      clearForm();
-      await loadTable();
+      if (!data.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-xs text-slate-500">Sin registros</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = "";
+      data.forEach(r => {
+        const url = `${SUPABASE_URL}/storage/v1/object/public/liquidaciones/${r.storage_path}`;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="px-3 py-2">${r.anio}</td>
+          <td class="px-3 py-2">${r.mes}</td>
+          <td class="px-3 py-2 text-xs">${new Date(r.uploaded_at).toLocaleString("es-CL")}</td>
+          <td class="px-3 py-2">${r.uploaded_by ?? ""}</td>
+          <td class="px-3 py-2 text-right">
+            <a href="${url}" target="_blank" class="text-azul underline mr-2 text-xs">Ver</a>
+            <button class="text-red-600 text-xs underline">Eliminar</button>
+          </td>
+        `;
+
+        tr.querySelector("button").addEventListener("click", async () => {
+          if (!confirm("¿Eliminar documento?")) return;
+
+          await supabase.storage.from("liquidaciones").remove([r.storage_path]);
+          await supabase
+            .from("liquidaciones")
+            .delete()
+            .eq("email", r.email)
+            .eq("anio", r.anio)
+            .eq("mes", r.mes);
+
+          loadLiquidaciones(email);
+        });
+
+        tbody.appendChild(tr);
+      });
     }
 
-    // ===== LIQUIDACIONES =====
-   async function loadLiquidaciones(email) {
-  const tbody = document.getElementById('liqTbody');
-  const msg = document.getElementById('liqMsg');
-  if (!tbody) return;
-
-  if (!email) {
-    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">Ingresa un email para ver el historial.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">Cargando…</td></tr>`;
-  msg.textContent = '';
-
-  const { data, error } = await supabase
-    .from('liquidaciones')
-    .select('anio, mes, storage_path, uploaded_at, uploaded_by')
-    .eq('email', email)
-    .order('anio', { ascending:false })
-    .order('mes', { ascending:false });
-
-  if (error) {
-    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-red-600 text-xs">Error al cargar liquidaciones.</td></tr>`;
-    console.error(error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">No hay liquidaciones registradas para este funcionario.</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = '';
-  for (const row of data) {
-    const tr = document.createElement('tr');
-    tr.className = "hover:bg-slate-50";
-    const fecha = row.uploaded_at ? new Date(row.uploaded_at).toLocaleString('es-CL') : '';
-    const link  = `https://vzmtivcsfrdpmhzcdxvl.supabase.co/storage/v1/object/public/liquidaciones/${row.storage_path}`;
-
-    tr.innerHTML = `
-      <td class="px-3 py-2 text-sm">${row.anio}</td>
-      <td class="px-3 py-2 text-sm">${row.mes}</td>
-      <td class="px-3 py-2 text-sm">${fecha}</td>
-      <td class="px-3 py-2 text-sm">${row.uploaded_by ?? ''}</td>
-      <td class="px-3 py-2 text-sm">
-        <a href="${link}" target="_blank" class="text-azul underline text-xs">Ver PDF</a>
-        <button class="ml-2 text-red-600 text-xs underline">Eliminar</button>
-      </td>
-    `;
-
-    const deleteBtn = tr.querySelector('button');
-    deleteBtn.addEventListener('click', async () => {
-      if (!confirm('¿Eliminar esta liquidación?')) return;
-
-      // 1) Borrar del storage
-      const { error: storageError } = await supabase
-        .storage
-        .from('liquidaciones')
-        .remove([row.storage_path]);
-
-      if (storageError) {
-        console.error('Error eliminando del storage', storageError);
-        msg.textContent = 'Error al borrar el archivo del storage: ' + storageError.message;
-        return;
-      }
-
-      // 2) Borrar el registro en la tabla
-      const { error: dbError } = await supabase
-        .from('liquidaciones')
-        .delete()
-        .eq('email', email)
-        .eq('anio', row.anio)
-        .eq('mes', row.mes);
-
-      if (dbError) {
-        console.error('Error eliminando fila en liquidaciones', dbError);
-        msg.textContent = 'Archivo borrado del storage, pero hubo un problema borrando el registro en la base de datos: ' + (dbError.message || '');
-        return;
-      }
-
-      msg.textContent = 'Liquidación eliminada correctamente.';
-      await loadLiquidaciones(email);
-    });
-
-    tbody.appendChild(tr);
-  }
-}
-
     async function uploadLiquidacion(adminEmail) {
-  const emailInput = document.getElementById('liqEmail');
-  const anioInput  = document.getElementById('liqAnio');
-  const mesSelect  = document.getElementById('liqMes');
-  const fileInput  = document.getElementById('liqFile');
-  const msg        = document.getElementById('liqMsg');
+      const email = document.getElementById("liqEmail").value.trim();
+      const anio = Number(document.getElementById("liqAnio").value);
+      const mes = Number(document.getElementById("liqMes").value);
+      const file = document.getElementById("liqFile").files[0];
+      const msg = document.getElementById("liqMsg");
 
-  const email = (emailInput?.value || '').trim();
-  const anio  = Number(anioInput?.value || '');
-  const mes   = Number(mesSelect?.value || '');
-  const file  = fileInput?.files?.[0];
+      msg.textContent = "";
 
-  msg.textContent = '';
+      if (!email || !anio || !mes || !file) {
+        msg.textContent = "Completa todos los campos.";
+        return;
+      }
 
-  if (!email) {
-    msg.textContent = 'Debes ingresar el email del funcionario.';
-    return;
-  }
-  if (!anio || !mes) {
-    msg.textContent = 'Debes indicar año y mes.';
-    return;
-  }
-  if (!file) {
-    msg.textContent = 'Selecciona un archivo PDF.';
-    return;
-  }
+      if (file.type !== "application/pdf") {
+        msg.textContent = "Solo se permiten PDF.";
+        return;
+      }
 
-  if (file.type !== 'application/pdf') {
-    msg.textContent = 'El archivo debe ser un PDF.';
-    return;
-  }
+      const filePath = `${email}/${anio}-${String(mes).padStart(2,"0")}.pdf`;
 
-  // Construir ruta en el storage
-  const filePath = `${email}/${anio}-${String(mes).padStart(2, '0')}.pdf`;
+      const { error: e1 } = await supabase.storage
+        .from("liquidaciones")
+        .upload(filePath, file, { upsert: true });
 
-  // Subir al storage
-  const { error: uploadError } = await supabase.storage
-    .from('liquidaciones')
-    .upload(filePath, file, { upsert: true });
+      if (e1) {
+        msg.textContent = "Error al subir archivo.";
+        return;
+      }
 
-  if (uploadError) {
-    console.error('Error al subir archivo al storage:', uploadError);
-    msg.textContent = 'Error al subir archivo al storage: ' + uploadError.message;
-    return;
-  }
+      const { error: e2 } = await supabase
+        .from("liquidaciones")
+        .upsert({
+          email,
+          anio,
+          mes,
+          storage_path: filePath,
+          uploaded_by: adminEmail
+        });
 
-  // Registrar/actualizar en la tabla "liquidaciones"
-  const { error: dbError } = await supabase
-    .from('liquidaciones')
-    .upsert({
-      email,
-      anio,
-      mes,
-      storage_path: filePath,
-      uploaded_by: adminEmail,
-    });
+      if (e2) {
+        msg.textContent = "Error al registrar BD.";
+        return;
+      }
 
-  if (dbError) {
-    console.error('Error al registrar liquidación en la base de datos:', dbError);
-    msg.textContent = 'Error al registrar liquidación en la base de datos: ' + dbError.message;
-    return;
-  }
+      msg.textContent = "Subida OK.";
+      loadLiquidaciones(email);
+    }
 
-  msg.textContent = 'Liquidación subida/actualizada correctamente.';
-  await loadLiquidaciones(email);
-}
-
-    window.addEventListener('DOMContentLoaded', async () => {
+    /* Inicialización */
+    window.addEventListener("DOMContentLoaded", async () => {
       const user = await mustBeAdmin();
       if (!user) return;
 
-      await loadTable();
+      loadTable();
 
-      document.getElementById('q').addEventListener('input', () => loadTable());
-      document.getElementById('save').addEventListener('click', save);
-      document.getElementById('new').addEventListener('click', clearForm);
+      document.getElementById("q").addEventListener("input", loadTable);
+      document.getElementById("save").addEventListener("click", save);
+      document.getElementById("new").addEventListener("click", clearForm);
+      document.getElementById("delete").addEventListener("click", deleteFuncionario);
 
-      const deleteBtn = document.getElementById('delete');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', deleteFuncionario);
-      }
-
-      document.getElementById('logout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        window.location.href = 'login.html';
+      document.getElementById("liqEmail").addEventListener("change", () => {
+        const email = document.getElementById("liqEmail").value.trim();
+        loadLiquidaciones(email);
       });
 
-      const liqEmailInput = document.getElementById('liqEmail');
-      const liqUploadBtn  = document.getElementById('liqUploadBtn');
+      document.getElementById("liqUploadBtn").addEventListener("click", () => {
+        uploadLiquidacion(user.email);
+      });
 
-      if (liqEmailInput) {
-        liqEmailInput.addEventListener('change', () => {
-          const email = liqEmailInput.value.trim();
-          loadLiquidaciones(email);
-        });
-      }
-
-      if (liqUploadBtn) {
-        liqUploadBtn.addEventListener('click', () => {
-          uploadLiquidacion(user.email);
-        });
-      }
+      document.getElementById("logout").addEventListener("click", async () => {
+        await supabase.auth.signOut();
+        window.location.href = "login.html";
+      });
     });
   </script>
 </head>
+
 <body class="bg-white text-slate-800">
-  <header class="border-b">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-3">
-        <img src="Calificaciones.png" alt="Logo" class="h-10 w-auto"/>
-        <span class="font-semibold text-azul">Portal del Funcionario</span>
-      </a>
-      <div class="flex items-center gap-3 text-sm">
-        <span id="userEmail" class="badge"></span>
-        <button id="logout" class="px-3 py-1 rounded bg-azul text-white">Cerrar sesión</button>
-      </div>
-    </div>
-  </header>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-    <div id="notAdmin" class="hidden border border-red-200 bg-red-50 text-red-700 px-4 py-3 rounded">
-      No tienes permisos para acceder a esta sección. Contacta a RRHH.
+<header class="border-b">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-3">
+      <img src="Calificaciones.png" alt="Logo" class="h-10 w-auto">
+      <span class="font-semibold text-azul">Portal del Funcionario</span>
+    </a>
+    <div class="flex items-center gap-3 text-sm">
+      <span id="userEmail" class="badge"></span>
+      <button id="logout" class="px-3 py-1 rounded bg-azul text-white">Cerrar sesión</button>
     </div>
+  </div>
+</header>
 
-    <div id="adminApp" class="space-y-8">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold text-azul">Administrador RRHH</h1>
-        <div class="flex gap-2">
-          <input id="q" type="search" placeholder="Buscar por email" class="rounded-xl border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-          <button id="new" class="px-4 py-2 rounded-xl border">Nuevo</button>
-          <button id="save" class="px-4 py-2 rounded-xl bg-azul text-white">Guardar</button>
-          <button id="delete" class="px-4 py-2 rounded-xl border border-red-300 text-red-600">Eliminar</button>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id="adminApp">
+
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-3xl font-bold text-azul">Administrador RRHH</h1>
+    <div class="flex gap-2">
+      <input id="q" type="search" placeholder="Buscar por email" class="rounded-xl border px-3 py-2">
+      <button id="new" class="px-4 py-2 rounded-xl border">Nuevo</button>
+      <button id="save" class="px-4 py-2 rounded-xl bg-azul text-white">Guardar</button>
+      <button id="delete" class="px-4 py-2 rounded-xl border border-red-300 text-red-600">Eliminar</button>
+    </div>
+  </div>
+
+  <div class="grid lg:grid-cols-2 gap-8">
+
+    <!-- Tabla -->
+    <section class="rounded-2xl border overflow-auto">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-3 py-2 text-left">Email</th>
+            <th class="px-3 py-2 text-left">Cat.</th>
+            <th class="px-3 py-2 text-left">Contrato</th>
+            <th class="px-3 py-2 text-left">Inicio</th>
+            <th class="px-3 py-2 text-left">Ingreso</th>
+            <th class="px-3 py-2 text-left">Hist.</th>
+            <th class="px-3 py-2 text-left">Saldo ant.</th>
+            <th class="px-3 py-2 text-left">Anual</th>
+            <th class="px-3 py-2 text-left">Total período</th>
+            <th class="px-3 py-2 text-left">Computado</th>
+            <th class="px-3 py-2 text-left">Balance</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </section>
+
+    <!-- Formulario -->
+    <section class="rounded-2xl border p-6">
+      <h2 class="font-semibold mb-2 text-xl"><span id="mode">Nuevo funcionario</span></h2>
+
+      <div class="space-y-3 text-sm">
+
+        <div>
+          <label class="text-xs">Email</label>
+          <input id="email" type="email" class="mt-1 w-full border rounded px-3 py-2">
         </div>
-      </div>
 
-      <div id="err" class="text-red-600 text-sm mb-4"></div>
-
-      <div class="grid lg:grid-cols-2 gap-8">
-        <!-- Tabla funcionarios -->
-        <section class="rounded-xl border bg-white shadow-sm overflow-hidden">
-          <header class="px-4 py-3 border-b bg-slate-50">
-            <h2 class="font-semibold text-slate-700">Funcionarios</h2>
-          </header>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-slate-200">
-              <thead class="bg-slate-50">
-                <tr>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Email</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cat.</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo contrato</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Inicio contrato</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Ingreso público</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">CAP hist.</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">CAP saldo ant.</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">CAP puntaje anual</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">CAP total período</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">CAP computado anual</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">CAP balance final</th>
-                </tr>
-              </thead>
-              <tbody id="tbody" class="divide-y divide-slate-200 bg-white">
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- Formulario funcionario -->
-        <section class="rounded-xl border bg-white shadow-sm">
-          <header class="px-4 py-3 border-b bg-slate-50 flex items-center justify-between">
-            <h2 class="font-semibold text-slate-700">
-              <span id="mode">Nuevo funcionario</span>
-            </h2>
-          </header>
-          <div class="p-4 space-y-4 text-sm">
-            <div>
-              <label for="email" class="block text-xs font-medium text-slate-600">Email</label>
-              <input id="email" type="email" placeholder="usuario@cormusjm.cl" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="categoria" class="block text-xs font-medium text-slate-600">Categoría</label>
-                <select id="categoria" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2">
-                  <option value="">-</option>
-                  <option value="A">A (Prof. médico)</option>
-                  <option value="B">B (Prof. otros)</option>
-                  <option value="C">C (Técnico)</option>
-                  <option value="D">D (Administrativo)</option>
-                  <option value="E">E (Auxiliar)</option>
-                </select>
-              </div>
-
-              <div>
-                <label for="tipo_contrato" class="block text-xs font-medium text-slate-600">Tipo de contrato</label>
-                <select id="tipo_contrato" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2">
-                  <option value="">Indefinido / Plazo fijo</option>
-                  <option value="Indefinido">Indefinido</option>
-                  <option value="Plazo fijo">Plazo fijo</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="fecha_inicio_contrato" class="block text-xs font-medium text-slate-600">Inicio contrato vigente</label>
-                <input id="fecha_inicio_contrato" type="date" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-              </div>
-              <div>
-                <label for="fecha_ingreso_publico" class="block text-xs font-medium text-slate-600">Ingreso funcionario público</label>
-                <input id="fecha_ingreso_publico" type="date" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="cap_puntaje_historico" class="block text-xs font-medium text-slate-600">CAP puntaje histórico</label>
-                <input id="cap_puntaje_historico" type="number" step="1" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-              </div>
-              <div>
-                <label for="cap_saldo_anterior" class="block text-xs font-medium text-slate-600">CAP saldo anterior</label>
-                <input id="cap_saldo_anterior" type="number" step="1" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="cap_puntaje_anual" class="block text-xs font-medium text-slate-600">CAP puntaje anual</label>
-                <input id="cap_puntaje_anual" type="number" step="1" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-              </div>
-              <div>
-                <label for="cap_puntaje_total_periodo" class="block text-xs font-medium text-slate-600">CAP puntaje total período</label>
-                <input id="cap_puntaje_total_periodo" type="number" step="1" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label for="cap_puntaje_computado_anual" class="block text-xs font-medium text-slate-600">CAP puntaje computado anual</label>
-                <input id="cap_puntaje_computado_anual" type="number" step="1" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-              </div>
-              <div>
-                <label for="cap_balance_final" class="block text-xs font-medium text-slate-600">CAP balance final</label>
-                <input id="cap_balance_final" type="number" step="1" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Gestión de liquidaciones -->
-      <section class="rounded-xl border bg-white shadow-sm">
-        <header class="px-4 py-3 border-b bg-slate-50">
-          <h2 class="font-semibold text-slate-700">Gestión de liquidaciones de sueldo</h2>
-        </header>
-        <div class="p-4 space-y-4 text-sm">
-          <p class="text-slate-600 text-xs">
-            Sube o actualiza las liquidaciones de sueldo de los funcionarios. La búsqueda se realiza por correo institucional.
-          </p>
-
-          <div class="grid md:grid-cols-3 gap-4 items-end">
-            <div>
-              <label for="liqEmail" class="block text-xs font-medium text-slate-600">Email funcionario</label>
-              <input id="liqEmail" type="email" placeholder="usuario@cormusjm.cl" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-            </div>
-            <div>
-              <label for="liqAnio" class="block text-xs font-medium text-slate-600">Año</label>
-              <input id="liqAnio" type="number" min="2000" max="2100" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2" />
-            </div>
-            <div>
-              <label for="liqMes" class="block text-xs font-medium text-slate-600">Mes</label>
-              <select id="liqMes" class="mt-1 block w-full rounded-lg border-slate-300 focus:border-azul focus:ring-azul px-3 py-2">
-                <option value="">-</option>
-                <option value="1">Enero</option>
-                <option value="2">Febrero</option>
-                <option value="3">Marzo</option>
-                <option value="4">Abril</option>
-                <option value="5">Mayo</option>
-                <option value="6">Junio</option>
-                <option value="7">Julio</option>
-                <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
-                <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
-              </select>
-            </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs">Categoría</label>
+            <select id="categoria" class="mt-1 w-full border rounded px-3 py-2">
+              <option value="">-</option>
+              <option value="A">A (Profesional médico)</option>
+              <option value="B">B (Otros profesionales)</option>
+              <option value="C">C (Técnico)</option>
+              <option value="D">D (Administrativo)</option>
+              <option value="E">E (Auxiliar)</option>
+            </select>
           </div>
 
-          <div class="grid md:grid-cols-[1.5fr_1fr] gap-4 items-end">
-            <div>
-              <label for="liqFile" class="block text-xs font-medium text-slate-600">Archivo PDF de liquidación</label>
-              <input id="liqFile" type="file" accept="application/pdf" class="mt-1 block w-full text-xs" />
-            </div>
-            <div class="flex flex-col gap-2">
-              <button id="liqUploadBtn" class="mt-1 px-4 py-2 rounded-xl bg-azul text-white text-sm">
-                Subir / Actualizar liquidación
-              </button>
-              <div id="liqMsg" class="text-xs text-slate-600"></div>
-            </div>
+          <div>
+            <label class="text-xs">Tipo contrato</label>
+            <select id="tipo_contrato" class="mt-1 w-full border rounded px-3 py-2">
+              <option value="">-</option>
+              <option value="Indefinido">Indefinido</option>
+              <option value="Plazo fijo">Plazo fijo</option>
+            </select>
           </div>
-
-          <div class="mt-4 border-t pt-3">
-            <h3 class="text-xs font-semibold text-slate-600 mb-2">Historial del funcionario</h3>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-slate-200 text-xs">
-                <thead class="bg-slate-50">
-                  <tr>
-                    <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase tracking-wider">Año</th>
-                    <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase tracking-wider">Mes</th>
-                    <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase tracking-wider">Fecha carga</th>
-                    <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase tracking-wider">Subida por</th>
-                    <th class="px-3 py-2 text-left font-semibold text-slate-500 uppercase tracking-wider">Acción</th>
-                  </tr>
-                </thead>
-                <tbody id="liqTbody" class="divide-y divide-slate-200 bg-white">
-                  <tr>
-                    <td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">
-                      No hay liquidaciones registradas para este funcionario.
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
         </div>
-      </section>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs">Inicio contrato</label>
+            <input id="fecha_inicio_contrato" type="date" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+          <div>
+            <label class="text-xs">Ingreso público</label>
+            <input id="fecha_ingreso_publico" type="date" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs">Puntaje histórico</label>
+            <input id="cap_puntaje_historico" type="number" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+          <div>
+            <label class="text-xs">Saldo anterior</label>
+            <input id="cap_saldo_anterior" type="number" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs">Puntaje anual</label>
+            <input id="cap_puntaje_anual" type="number" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+          <div>
+            <label class="text-xs">Total período</label>
+            <input id="cap_puntaje_total_periodo" type="number" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="text-xs">Computado</label>
+            <input id="cap_puntaje_computado_anual" type="number" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+          <div>
+            <label class="text-xs">Balance final</label>
+            <input id="cap_balance_final" type="number" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Liquidaciones -->
+  <section class="mt-10 rounded-2xl border p-6">
+    <h2 class="font-semibold text-xl mb-3">Liquidaciones</h2>
+
+    <div class="grid md:grid-cols-3 gap-4 text-sm">
+      <div>
+        <label class="text-xs">Email</label>
+        <input id="liqEmail" type="email" class="mt-1 w-full border rounded px-3 py-2">
+      </div>
+      <div>
+        <label class="text-xs">Año</label>
+        <input id="liqAnio" type="number" class="mt-1 w-full border rounded px-3 py-2">
+      </div>
+      <div>
+        <label class="text-xs">Mes</label>
+        <select id="liqMes" class="mt-1 w-full border rounded px-3 py-2">
+          <option value="">-</option>
+          <option value="1">Enero</option>
+          <option value="2">Febrero</option>
+          <option value="3">Marzo</option>
+          <option value="4">Abril</option>
+          <option value="5">Mayo</option>
+          <option value="6">Junio</option>
+          <option value="7">Julio</option>
+          <option value="8">Agosto</option>
+          <option value="9">Septiembre</option>
+          <option value="10">Octubre</option>
+          <option value="11">Noviembre</option>
+          <option value="12">Diciembre</option>
+        </select>
+      </div>
     </div>
-  </main>
+
+    <div class="grid md:grid-cols-[1.5fr_1fr] gap-4 items-end mt-3 text-sm">
+      <div>
+        <label class="text-xs">Archivo PDF</label>
+        <input id="liqFile" type="file" class="mt-1 w-full text-xs">
+      </div>
+      <div class="flex flex-col gap-2">
+        <button id="liqUploadBtn" class="px-4 py-2 rounded-xl bg-azul text-white">Subir / Actualizar</button>
+        <span id="liqMsg" class="text-xs text-slate-500"></span>
+      </div>
+    </div>
+
+    <div class="mt-6 border-t pt-4">
+      <h3 class="text-xs font-semibold text-slate-600 mb-2">Historial</h3>
+      <table class="min-w-full text-sm border rounded-2xl overflow-hidden">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-3 py-2 text-left">Año</th>
+            <th class="px-3 py-2 text-left">Mes</th>
+            <th class="px-3 py-2 text-left">Fecha carga</th>
+            <th class="px-3 py-2 text-left">Subida por</th>
+            <th class="px-3 py-2 text-right">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="liqTbody">
+          <tr><td colspan="5" class="px-3 py-3 text-center text-slate-500 text-xs">Sin datos</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+</main>
+
+<section id="notAdmin" class="hidden p-8 text-center">
+  <h2 class="text-2xl font-bold text-red-600">Acceso restringido</h2>
+  <p class="text-slate-600">Tu cuenta no está autorizada.</p>
+  <a href="index.html" class="text-azul underline">Volver</a>
+</section>
+
 </body>
 </html>
