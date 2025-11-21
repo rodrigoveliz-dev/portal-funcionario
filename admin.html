@@ -222,48 +222,61 @@
     }
 
     async function uploadLiquidacion(adminEmail){
-      const email=document.getElementById("liqEmail").value.trim();
-      const anio=Number(document.getElementById("liqAnio").value);
-      const mes=Number(document.getElementById("liqMes").value);
-      const file=document.getElementById("liqFile").files[0];
-      const msg=document.getElementById("liqMsg");
-      msg.textContent="";
+  const email = document.getElementById("liqEmail").value.trim();
+  const anio  = Number(document.getElementById("liqAnio").value);
+  const mes   = Number(document.getElementById("liqMes").value);
+  const file  = document.getElementById("liqFile").files[0];
+  const msg   = document.getElementById("liqMsg");
+  msg.textContent = "";
 
-      if(!email||!anio||!mes||!file){
-        msg.textContent="Completa email, año, mes y archivo PDF.";
-        return;
-      }
-      if(file.type!=="application/pdf"){
-        msg.textContent="Solo se permiten archivos PDF.";
-        return;
-      }
+  if (!email || !anio || !mes || !file) {
+    msg.textContent = "Completa email, año, mes y archivo PDF.";
+    return;
+  }
 
-      // ⭐ RUTA IGUAL A TU BD: email/año/mes.pdf
-      const filePath = `${email}/${anio}/${String(mes).padStart(2,"0")}.pdf`;
+  if (file.type !== "application/pdf") {
+    msg.textContent = "Solo se permiten archivos PDF.";
+    return;
+  }
 
-      const { error: e1 } = await supabase
-        .storage.from("liquidaciones")
-        .upload(filePath,file,{ upsert:true });
+  // misma ruta que tu BD: email/año/mes.pdf
+  const filePath = `${email}/${anio}/${String(mes).padStart(2,"0")}.pdf`;
 
-      if(e1){
-        console.error(e1);
-        msg.textContent="Error al subir archivo al storage.";
-        return;
-      }
+  console.log("Subiendo a storage path:", filePath);
 
-      const { error: e2 } = await supabase.from("liquidaciones").upsert({
-        email, anio, mes, storage_path:filePath, uploaded_by:adminEmail
-      });
+  const { error: e1 } = await supabase
+    .storage
+    .from("liquidaciones")
+    .upload(filePath, file, {
+      upsert: true,
+      contentType: "application/pdf"
+    });
 
-      if(e2){
-        console.error(e2);
-        msg.textContent="Error al registrar en la base de datos.";
-        return;
-      }
+  if (e1) {
+    console.error("Error al subir al storage:", e1);
+    msg.textContent = `Error al subir archivo: ${e1.message || "Error desconocido"}`;
+    return;
+  }
 
-      msg.textContent="Liquidación subida correctamente.";
-      loadLiquidaciones(email);
-    }
+  const { error: e2 } = await supabase
+    .from("liquidaciones")
+    .upsert({
+      email,
+      anio,
+      mes,
+      storage_path: filePath,
+      uploaded_by: adminEmail
+    });
+
+  if (e2) {
+    console.error("Error al registrar en BD:", e2);
+    msg.textContent = `Error al registrar en BD: ${e2.message || "Error desconocido"}`;
+    return;
+  }
+
+  msg.textContent = "Liquidación subida correctamente.";
+  loadLiquidaciones(email);
+}
 
     /* ===============================
        INICIALIZACIÓN
@@ -502,3 +515,4 @@
 
 </body>
 </html>
+
