@@ -15,6 +15,22 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // ⭐ Nombres de meses
+    const MESES = {
+      1: "Enero",
+      2: "Febrero",
+      3: "Marzo",
+      4: "Abril",
+      5: "Mayo",
+      6: "Junio",
+      7: "Julio",
+      8: "Agosto",
+      9: "Septiembre",
+     10: "Octubre",
+     11: "Noviembre",
+     12: "Diciembre"
+    };
+
     async function loadData() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { window.location.href = "login.html"; return; }
@@ -45,7 +61,7 @@
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td class="px-4 py-2">${row.anio}</td>
-          <td class="px-4 py-2">${row.mes}</td>
+          <td class="px-4 py-2">${MESES[row.mes] || row.mes}</td>
           <td class="px-4 py-2">${new Date(row.uploaded_at).toLocaleDateString("es-CL")}</td>
           <td class="px-4 py-2 text-right">
             <button class="text-blue-600 underline text-sm">Descargar</button>
@@ -65,11 +81,9 @@
 
           const url = signed.signedUrl;
 
-          // --- 🚀 NUEVO: popup + fallback para entornos que bloquean window.open ----
+          // 🚀 POPUP + fallback
           const popup = window.open(url, "_blank");
-
           if (!popup || popup.closed || typeof popup.closed === "undefined") {
-            // fallback seguro
             window.location.href = url;
           }
         });
