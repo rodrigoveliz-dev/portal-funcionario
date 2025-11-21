@@ -2,161 +2,137 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mis Liquidaciones — Portal del Funcionario</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    :root { --azul:#004aad; --verde:#3cb043; --naranjo:#f57c00; }
-    .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)}
-    .badge{font-size:.75rem;padding:.15rem .4rem;border-radius:.4rem;background:#eef2ff}
-    @media print { header, footer, #logout, .no-print { display:none!important; } }
-  </style>
+
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-    const supabase = createClient(
-      'https://ocqoipzgtsanpyzjcsis.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4'
-    );
 
-    async function enforceAuth(){
+    const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
+    const SUPABASE_ANON_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function loadData() {
       const { data: { session } } = await supabase.auth.getSession();
-      if(!session){
-        window.location.href = 'login.html';
-        return null;
-      }
-      document.getElementById('app').classList.remove('hidden');
-      document.getElementById('userEmail').textContent = session.user.email;
-      return session;
-    }
-
-    function nombreMes(m){
-      const arr = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-      return arr[m] || m;
-    }
-
-    async function cargarLiquidaciones(session){
-      const tbody = document.getElementById('tbody');
-      tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-sm text-slate-500">Cargando...</td></tr>`;
+      if (!session) { window.location.href = "login.html"; return; }
 
       const email = session.user.email;
+      document.getElementById("userEmail").textContent = email;
 
       const { data, error } = await supabase
-        .from('liquidaciones')
-        .select('anio, mes, storage_path, uploaded_at, uploaded_by')
-        .eq('email', email)
-        .order('anio', { ascending:false })
-        .order('mes', { ascending:false });
+        .from("liquidaciones")
+        .select("*")
+        .eq("email", email)
+        .order("anio", { ascending: false })
+        .order("mes", { ascending: false });
 
-      if(error){
-        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-sm text-red-600">Error al cargar liquidaciones.</td></tr>`;
-        console.error(error);
+      const tbody = document.getElementById("tbody");
+
+      if (error || !data?.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="py-4 text-center text-slate-500 text-sm">No hay liquidaciones disponibles.</td>
+          </tr>`;
         return;
       }
 
-      if(!data || data.length === 0){
-        tbody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-sm text-slate-500">No hay liquidaciones registradas. Si crees que falta información, contacta a RRHH.</td></tr>`;
-        return;
-      }
+      tbody.innerHTML = "";
 
-      tbody.innerHTML = '';
-      for(const row of data){
-        const tr = document.createElement('tr');
-        tr.className = 'border-b last:border-b-0 hover:bg-slate-50';
-
-        const fechaSubida = row.uploaded_at ? new Date(row.uploaded_at).toLocaleDateString('es-CL') : '';
-
+      data.forEach(row => {
+        const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td class="px-3 py-2 text-sm">${row.anio}</td>
-          <td class="px-3 py-2 text-sm">${nombreMes(row.mes)}</td>
-          <td class="px-3 py-2 text-sm">${fechaSubida}</td>
-          <td class="px-3 py-2 text-sm text-right">
-            <button class="px-3 py-1 rounded-full bg-azul text-white text-xs hover:opacity-90">Ver PDF</button>
+          <td class="px-4 py-2">${row.anio}</td>
+          <td class="px-4 py-2">${row.mes}</td>
+          <td class="px-4 py-2">${new Date(row.uploaded_at).toLocaleDateString("es-CL")}</td>
+          <td class="px-4 py-2 text-right">
+            <button class="text-blue-600 underline text-sm">Descargar</button>
           </td>
         `;
 
-        const btn = tr.querySelector('button');
-        btn.addEventListener('click', async () => {
+        tr.querySelector("button").addEventListener("click", async () => {
           const { data: signed, error: urlError } = await supabase.storage
-            .from('liquidaciones')
+            .from("liquidaciones")
             .createSignedUrl(row.storage_path, 60);
 
-          if(urlError){
-            alert('No se pudo generar el enlace del PDF. Intenta nuevamente o contacta a RRHH.');
+          if (urlError) {
+            alert("No se pudo obtener el archivo. Intenta nuevamente.");
             console.error(urlError);
             return;
           }
 
-          window.open(signed.signedUrl, '_blank');
+          const url = signed.signedUrl;
+
+          // --- 🚀 NUEVO: popup + fallback para entornos que bloquean window.open ----
+          const popup = window.open(url, "_blank");
+
+          if (!popup || popup.closed || typeof popup.closed === "undefined") {
+            // fallback seguro
+            window.location.href = url;
+          }
         });
 
         tbody.appendChild(tr);
-      }
+      });
     }
 
-    window.addEventListener('DOMContentLoaded', async () => {
-      const session = await enforceAuth();
-      if(!session) return;
+    window.onload = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = "login.html"; return; }
 
-      const logoutBtn = document.getElementById('logout');
-      if(logoutBtn){
-        logoutBtn.addEventListener('click', async () => {
-          await supabase.auth.signOut();
-          window.location.href = 'index.html';
-        });
-      }
+      document.getElementById("userEmail").textContent = session.user.email;
 
-      await cargarLiquidaciones(session);
-    });
+      document.getElementById("logout").onclick = async () => {
+        await supabase.auth.signOut();
+        window.location.href = "login.html";
+      };
+
+      loadData();
+    };
   </script>
 </head>
+
 <body class="bg-white text-slate-800">
-  <header class="border-b bg-white">
-    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-      <a href="index.html" class="text-azul font-semibold">← Volver</a>
-      <h1 class="text-lg font-bold text-azul">Mis Liquidaciones de Sueldo</h1>
-      <div class="flex items-center gap-2 text-xs text-slate-500">
-        <span id="userEmail" class="badge"></span>
-        <button id="logout" class="px-3 py-1 rounded-full bg-azul text-white">Salir</button>
+
+  <header class="border-b">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <img src="Calificaciones.png" class="h-10">
+        <span class="font-semibold text-blue-700">Portal del Funcionario</span>
+      </a>
+      <div class="flex items-center gap-3 text-sm">
+        <span id="userEmail" class="px-3 py-1 rounded bg-blue-50 text-blue-700"></span>
+        <button id="logout" class="px-3 py-1 rounded bg-blue-600 text-white">Cerrar sesión</button>
       </div>
     </div>
   </header>
 
-  <main id="app" class="hidden max-w-5xl mx-auto px-4 py-8 space-y-6">
-    <section class="no-print">
-      <p class="text-sm text-slate-600">
-        En esta sección puedes revisar y descargar tus liquidaciones de sueldo registradas por Recursos Humanos.
-      </p>
-    </section>
+  <main class="max-w-6xl mx-auto px-4 py-10">
+    <h1 class="text-3xl font-bold text-blue-700 mb-6">Mis Liquidaciones</h1>
 
-    <section class="rounded-2xl border shadow-sm overflow-hidden bg-white">
+    <div class="rounded-2xl border overflow-hidden">
       <table class="min-w-full text-sm">
-        <thead class="bg-slate-50 border-b">
+        <thead class="bg-slate-50">
           <tr>
-            <th class="px-3 py-2 text-left">Año</th>
-            <th class="px-3 py-2 text-left">Mes</th>
-            <th class="px-3 py-2 text-left">Fecha de carga</th>
-            <th class="px-3 py-2 text-right">Acción</th>
+            <th class="px-4 py-2 text-left">Año</th>
+            <th class="px-4 py-2 text-left">Mes</th>
+            <th class="px-4 py-2 text-left">Fecha carga</th>
+            <th class="px-4 py-2 text-right">Acción</th>
           </tr>
         </thead>
-        <tbody id="tbody"></tbody>
+        <tbody id="tbody">
+          <tr>
+            <td colspan="4" class="px-4 py-4 text-center text-slate-500 text-sm">
+              Cargando...
+            </td>
+          </tr>
+        </tbody>
       </table>
-    </section>
+    </div>
 
-    <section class="no-print text-xs text-slate-500">
-      <p>
-        La información mostrada es referencial y corresponde a los registros disponibles en RRHH.
-        Si detectas diferencias o falta de liquidaciones, por favor contacta a la unidad de Recursos Humanos.
-      </p>
-    </section>
   </main>
 
-  <footer class="border-t mt-8">
-    <div class="max-w-5xl mx-auto px-4 py-6 text-xs text-slate-500">
-      © <span id="year"></span> Corporación Municipal San José de Maipo — Portal del Funcionario
-    </div>
-  </footer>
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
 </body>
 </html>
