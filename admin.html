@@ -22,7 +22,11 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    const SUPER_ADMINS = ['rodrigo.veliz@cormusjm.cl'];
+const SUPER_ADMINS = [
+  'rodrigo.veliz@cormusjm.cl',
+  'jroman@cormusjm.cl',
+  'jacqueline@cormusjm.cl'
+];
 
     const cols = [
       'email','categoria','tipo_contrato','fecha_inicio_contrato','fecha_ingreso_publico',
@@ -439,3 +443,4 @@
 
 </body>
 </html>
+
