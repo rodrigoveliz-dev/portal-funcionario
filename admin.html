@@ -15,50 +15,33 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
-    // 🚀 Mismo proyecto que index / carrera / login / mis-liquidaciones
+    // 🚀 Proyecto correcto
     const SUPABASE_URL = 'https://ocqoipzgtsanpyzjcsis.supabase.co';
     const SUPABASE_ANON_KEY =
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    /* Admins que SIEMPRE pueden entrar */
     const SUPER_ADMINS = ['rodrigo.veliz@cormusjm.cl'];
 
-    /* Columnas reales */
     const cols = [
-      'email',
-      'categoria',
-      'tipo_contrato',
-      'fecha_inicio_contrato',
-      'fecha_ingreso_publico',
-      'cap_puntaje_historico',
-      'cap_saldo_anterior',
-      'cap_puntaje_anual',
-      'cap_puntaje_total_periodo',
-      'cap_puntaje_computado_anual',
-      'cap_balance_final'
+      'email','categoria','tipo_contrato','fecha_inicio_contrato','fecha_ingreso_publico',
+      'cap_puntaje_historico','cap_saldo_anterior','cap_puntaje_anual',
+      'cap_puntaje_total_periodo','cap_puntaje_computado_anual','cap_balance_final'
     ];
 
-    /* ===========================
-       VALIDACIÓN DE ADMIN SEGURA
-       =========================== */
     async function mustBeAdmin() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        window.location.href = "login.html";
-        return null;
-      }
+      if (!session) { window.location.href = "login.html"; return null; }
 
       const email = session.user.email.toLowerCase().trim();
       document.getElementById("userEmail").textContent = email;
 
       if (SUPER_ADMINS.includes(email)) return session.user;
 
-      const { data, error } = await supabase.from("admins").select("email");
-      if (error) return session.user; // si falla, dejamos pasar y RLS manda
+      const { data } = await supabase.from("admins").select("email");
+      const isAdmin = (data || []).some(a => a.email === email);
 
-      const isAdmin = (data || []).some(a => a.email?.toLowerCase().trim() === email);
       if (!isAdmin) {
         document.getElementById("notAdmin").classList.remove("hidden");
         document.getElementById("adminApp").classList.add("hidden");
@@ -67,265 +50,201 @@
       return session.user;
     }
 
-    function toInput(id) { return document.getElementById(id); }
+    function toInput(id){ return document.getElementById(id); }
 
-    function setForm(row) {
-      for (const c of cols) {
-        const v = row?.[c] ?? "";
+    function setForm(row){
+      for(const c of cols){
         const el = toInput(c);
-        if (!el) continue;
-        if (el.type === "date") el.value = v ? String(v).slice(0,10) : "";
+        if(!el) continue;
+        const v = row?.[c] ?? "";
+        if(el.type==="date") el.value = v ? v.slice(0,10):"";
         else el.value = v;
       }
     }
 
-    /* ===========================
-       CARGAR TABLA DE FUNCIONARIOS
-       =========================== */
-    async function loadTable() {
-      const searchValue = document.getElementById("q").value.trim();
+    async function loadTable(){
+      const search = document.getElementById("q").value.trim();
+      let q = supabase.from("funcionarios").select(cols.join(",")).order("email");
+      if(search) q = q.ilike("email",`%${search}%`);
 
-      let query = supabase
-        .from("funcionarios")
-        .select(cols.join(","), { count: "exact" })
-        .order("email");
+      const { data } = await q;
+      const tbody=document.getElementById("tbody");
+      tbody.innerHTML="";
 
-      if (searchValue !== "") {
-        query = query.ilike("email", `%${searchValue}%`);
-      }
-
-      const { data, error } = await query;
-      const tbody = document.getElementById("tbody");
-      tbody.innerHTML = "";
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      (data || []).forEach(r => {
-        const tr = document.createElement("tr");
-        tr.className = "row cursor-pointer";
-        tr.innerHTML = `
-          <td class="px-3 py-2 text-sm">${r.email}</td>
-          <td class="px-3 py-2 text-sm">${r.categoria ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.tipo_contrato ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.fecha_inicio_contrato?.slice(0,10) ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.fecha_ingreso_publico?.slice(0,10) ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_puntaje_historico ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_saldo_anterior ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_puntaje_anual ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_puntaje_total_periodo ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_puntaje_computado_anual ?? ""}</td>
-          <td class="px-3 py-2 text-sm">${r.cap_balance_final ?? ""}</td>
+      (data||[]).forEach(r=>{
+        const tr=document.createElement("tr");
+        tr.className="row cursor-pointer";
+        tr.innerHTML=`
+          <td class="px-3 py-2">${r.email}</td>
+          <td class="px-3 py-2">${r.categoria??""}</td>
+          <td class="px-3 py-2">${r.tipo_contrato??""}</td>
+          <td class="px-3 py-2">${r.fecha_inicio_contrato?.slice(0,10)??""}</td>
+          <td class="px-3 py-2">${r.fecha_ingreso_publico?.slice(0,10)??""}</td>
+          <td class="px-3 py-2">${r.cap_puntaje_historico??""}</td>
+          <td class="px-3 py-2">${r.cap_saldo_anterior??""}</td>
+          <td class="px-3 py-2">${r.cap_puntaje_anual??""}</td>
+          <td class="px-3 py-2">${r.cap_puntaje_total_periodo??""}</td>
+          <td class="px-3 py-2">${r.cap_puntaje_computado_anual??""}</td>
+          <td class="px-3 py-2">${r.cap_balance_final??""}</td>
         `;
-
-        tr.addEventListener("click", () => {
+        tr.addEventListener("click",()=>{
           setForm(r);
-          document.getElementById("email").readOnly = true;
-          document.getElementById("mode").textContent = "Editar funcionario";
+          document.getElementById("email").readOnly=true;
+          document.getElementById("mode").textContent="Editar funcionario";
 
           document.getElementById("liqEmail").value = r.email;
           loadLiquidaciones(r.email);
         });
-
         tbody.appendChild(tr);
       });
     }
 
-    /* GUARDAR FUNCIONARIO */
-    async function save() {
-      const row = {};
-      for (const c of cols) row[c] = toInput(c)?.value || null;
+    async function save(){
+      const row={}; cols.forEach(c=>row[c]=toInput(c)?.value||null);
+      if(!row.email) return alert("Email obligatorio");
 
-      if (!row.email) return alert("Email obligatorio");
-
-      const numberFields = [
-        "cap_puntaje_historico", "cap_saldo_anterior", "cap_puntaje_anual",
-        "cap_puntaje_total_periodo", "cap_puntaje_computado_anual", "cap_balance_final"
+      const nums=[
+        "cap_puntaje_historico","cap_saldo_anterior","cap_puntaje_anual",
+        "cap_puntaje_total_periodo","cap_puntaje_computado_anual","cap_balance_final"
       ];
-
-      numberFields.forEach(f => row[f] = row[f] ? Number(row[f]) : null);
+      nums.forEach(n=>row[n]=row[n]?Number(row[n]):null);
 
       const { error } = await supabase.from("funcionarios").upsert(row);
-      if (error) {
-        alert("Error al guardar: " + error.message);
-        return;
-      }
+      if(error) return alert(error.message);
 
-      alert("Guardado correctamente");
+      alert("Guardado");
       clearForm();
       loadTable();
     }
 
-    function clearForm() {
+    function clearForm(){
       setForm(null);
-      document.getElementById("email").readOnly = false;
-      document.getElementById("mode").textContent = "Nuevo funcionario";
+      document.getElementById("email").readOnly=false;
+      document.getElementById("mode").textContent="Nuevo funcionario";
     }
 
-    /* ELIMINAR FUNCIONARIO */
-    async function deleteFuncionario() {
-      const email = document.getElementById("email").value.trim();
-      if (!email) return alert("Selecciona un funcionario primero.");
+    async function deleteFuncionario(){
+      const email=document.getElementById("email").value.trim();
+      if(!email) return alert("Selecciona un funcionario");
+      if(!confirm("¿Eliminar?")) return;
 
-      if (!confirm(`Eliminar funcionario ${email}?`)) return;
-
-      const { error } = await supabase.from("funcionarios").delete().eq("email", email);
-      if (error) return alert("Error eliminando: " + error.message);
-
-      alert("Eliminado correctamente");
-      clearForm();
-      loadTable();
+      await supabase.from("funcionarios").delete().eq("email",email);
+      clearForm(); loadTable();
     }
 
-    /* ===========================
-       LIQUIDACIONES
-       =========================== */
-    async function loadLiquidaciones(email) {
-      const tbody = document.getElementById("liqTbody");
-      if (!email) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-xs text-slate-500">Ingresa un correo</td></tr>`;
+    async function loadLiquidaciones(email){
+      const tbody=document.getElementById("liqTbody");
+      if(!email){
+        tbody.innerHTML=`<tr><td colspan="5" class="py-3 text-xs text-center">Ingresa un correo</td></tr>`;
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("liquidaciones")
         .select("*")
-        .eq("email", email)
-        .order("anio", { ascending: false })
-        .order("mes", { ascending: false });
+        .eq("email",email)
+        .order("anio",{ascending:false})
+        .order("mes",{ascending:false});
 
-      if (error) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-600 text-xs">Error cargando</td></tr>`;
-        console.error(error);
+      if(!data?.length){
+        tbody.innerHTML=`<tr><td colspan="5" class="py-3 text-xs text-center">Sin registros</td></tr>`;
         return;
       }
 
-      if (!data.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-xs text-slate-500">Sin registros</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = "";
-      data.forEach(r => {
-        const url = `${SUPABASE_URL}/storage/v1/object/public/liquidaciones/${r.storage_path}`;
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+      tbody.innerHTML="";
+      data.forEach(r=>{
+        const url=`${SUPABASE_URL}/storage/v1/object/public/liquidaciones/${r.storage_path}`;
+        const tr=document.createElement("tr");
+        tr.innerHTML=`
           <td class="px-3 py-2">${r.anio}</td>
           <td class="px-3 py-2">${r.mes}</td>
           <td class="px-3 py-2 text-xs">${new Date(r.uploaded_at).toLocaleString("es-CL")}</td>
-          <td class="px-3 py-2">${r.uploaded_by ?? ""}</td>
+          <td class="px-3 py-2">${r.uploaded_by}</td>
           <td class="px-3 py-2 text-right">
-            <a href="${url}" target="_blank" class="text-azul underline mr-2 text-xs">Ver</a>
+            <a class="text-azul underline mr-2 text-xs" href="${url}" target="_blank">Ver</a>
             <button class="text-red-600 text-xs underline">Eliminar</button>
           </td>
         `;
-
-        tr.querySelector("button").addEventListener("click", async () => {
-          if (!confirm("¿Eliminar documento?")) return;
-
+        tr.querySelector("button").onclick = async ()=>{
+          if(!confirm("¿Eliminar PDF?")) return;
           await supabase.storage.from("liquidaciones").remove([r.storage_path]);
-          await supabase
-            .from("liquidaciones")
+          await supabase.from("liquidaciones")
             .delete()
-            .eq("email", r.email)
-            .eq("anio", r.anio)
-            .eq("mes", r.mes);
-
+            .eq("email",r.email).eq("anio",r.anio).eq("mes",r.mes);
           loadLiquidaciones(email);
-        });
-
+        };
         tbody.appendChild(tr);
       });
     }
 
-    async function uploadLiquidacion(adminEmail) {
-      const email = document.getElementById("liqEmail").value.trim();
-      const anio = Number(document.getElementById("liqAnio").value);
-      const mes = Number(document.getElementById("liqMes").value);
-      const file = document.getElementById("liqFile").files[0];
-      const msg = document.getElementById("liqMsg");
+    async function uploadLiquidacion(adminEmail){
+      const email=document.getElementById("liqEmail").value.trim();
+      const anio=Number(document.getElementById("liqAnio").value);
+      const mes=Number(document.getElementById("liqMes").value);
+      const file=document.getElementById("liqFile").files[0];
+      const msg=document.getElementById("liqMsg");
+      msg.textContent="";
 
-      msg.textContent = "";
-
-      if (!email || !anio || !mes || !file) {
-        msg.textContent = "Completa todos los campos.";
+      if(!email||!anio||!mes||!file){
+        msg.textContent="Completa todos los campos";
+        return;
+      }
+      if(file.type!=="application/pdf"){
+        msg.textContent="Solo PDF";
         return;
       }
 
-      if (file.type !== "application/pdf") {
-        msg.textContent = "Solo se permiten PDF.";
-        return;
-      }
+      // ⭐ RUTA IGUAL A TU BD: email/año/mes.pdf ⭐
+      const filePath = `${email}/${anio}/${String(mes).padStart(2,"0")}.pdf`;
 
-      const filePath = `${email}/${anio}-${String(mes).padStart(2,"0")}.pdf`;
+      const { error: e1 } = await supabase
+        .storage.from("liquidaciones")
+        .upload(filePath,file,{ upsert:true });
 
-      const { error: e1 } = await supabase.storage
-        .from("liquidaciones")
-        .upload(filePath, file, { upsert: true });
+      if(e1){ msg.textContent="Error al subir"; return; }
 
-      if (e1) {
-        msg.textContent = "Error al subir archivo.";
-        console.error(e1);
-        return;
-      }
+      const { error: e2 } = await supabase.from("liquidaciones").upsert({
+        email, anio, mes, storage_path:filePath, uploaded_by:adminEmail
+      });
 
-      const { error: e2 } = await supabase
-        .from("liquidaciones")
-        .upsert({
-          email,
-          anio,
-          mes,
-          storage_path: filePath,
-          uploaded_by: adminEmail
-        });
+      if(e2){ msg.textContent="Error BD"; return; }
 
-      if (e2) {
-        msg.textContent = "Error al registrar BD.";
-        console.error(e2);
-        return;
-      }
-
-      msg.textContent = "Subida OK.";
+      msg.textContent="PDF subido";
       loadLiquidaciones(email);
     }
 
-    /* Inicialización */
-    window.addEventListener("DOMContentLoaded", async () => {
+    window.onload = async ()=>{
       const user = await mustBeAdmin();
-      if (!user) return;
+      if(!user) return;
 
       loadTable();
 
-      document.getElementById("q").addEventListener("input", loadTable);
-      document.getElementById("save").addEventListener("click", save);
-      document.getElementById("new").addEventListener("click", clearForm);
-      document.getElementById("delete").addEventListener("click", deleteFuncionario);
+      document.getElementById("q").oninput=loadTable;
+      document.getElementById("save").onclick=save;
+      document.getElementById("new").onclick=clearForm;
+      document.getElementById("delete").onclick=deleteFuncionario;
 
-      document.getElementById("liqEmail").addEventListener("change", () => {
-        const email = document.getElementById("liqEmail").value.trim();
-        loadLiquidaciones(email);
-      });
-
-      document.getElementById("liqUploadBtn").addEventListener("click", () => {
+      document.getElementById("liqEmail").onchange=()=>{
+        loadLiquidaciones(document.getElementById("liqEmail").value.trim());
+      };
+      document.getElementById("liqUploadBtn").onclick=()=>{
         uploadLiquidacion(user.email);
-      });
+      };
 
-      document.getElementById("logout").addEventListener("click", async () => {
+      document.getElementById("logout").onclick=async()=>{
         await supabase.auth.signOut();
-        window.location.href = "login.html";
-      });
-    });
+        window.location.href="login.html";
+      };
+    };
   </script>
 </head>
 
 <body class="bg-white text-slate-800">
 
 <header class="border-b">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+  <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-3">
-      <img src="Calificaciones.png" alt="Logo" class="h-10 w-auto">
+      <img src="Calificaciones.png" class="h-10">
       <span class="font-semibold text-azul">Portal del Funcionario</span>
     </a>
     <div class="flex items-center gap-3 text-sm">
@@ -335,7 +254,7 @@
   </div>
 </header>
 
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id="adminApp">
+<main id="adminApp" class="max-w-7xl mx-auto px-4 py-10">
 
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-3xl font-bold text-azul">Administrador RRHH</h1>
@@ -349,7 +268,6 @@
 
   <div class="grid lg:grid-cols-2 gap-8">
 
-    <!-- Tabla -->
     <section class="rounded-2xl border overflow-auto">
       <table class="min-w-full text-sm">
         <thead class="bg-slate-50">
@@ -371,12 +289,10 @@
       </table>
     </section>
 
-    <!-- Formulario -->
     <section class="rounded-2xl border p-6">
       <h2 class="font-semibold mb-2 text-xl"><span id="mode">Nuevo funcionario</span></h2>
 
       <div class="space-y-3 text-sm">
-
         <div>
           <label class="text-xs">Email</label>
           <input id="email" type="email" class="mt-1 w-full border rounded px-3 py-2">
@@ -387,14 +303,10 @@
             <label class="text-xs">Categoría</label>
             <select id="categoria" class="mt-1 w-full border rounded px-3 py-2">
               <option value="">-</option>
-              <option value="A">A (Profesional médico)</option>
-              <option value="B">B (Otros profesionales)</option>
-              <option value="C">C (Técnico)</option>
-              <option value="D">D (Administrativo)</option>
-              <option value="E">E (Auxiliar)</option>
+              <option>A</option><option>B</option><option>C</option>
+              <option>D</option><option>E</option>
             </select>
           </div>
-
           <div>
             <label class="text-xs">Tipo contrato</label>
             <select id="tipo_contrato" class="mt-1 w-full border rounded px-3 py-2">
@@ -454,7 +366,6 @@
 
   </div>
 
-  <!-- Liquidaciones -->
   <section class="mt-10 rounded-2xl border p-6">
     <h2 class="font-semibold text-xl mb-3">Liquidaciones</h2>
 
