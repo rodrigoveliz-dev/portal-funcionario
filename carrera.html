@@ -44,7 +44,7 @@
       const hoy = new Date();
       const years = diffYearsExact(ingreso, hoy);
       const bieniosActuales = Math.floor(years/2);
-      if (bieniosActuales >= 15) return null; // máximo reglamentario alcanzado
+      if (bieniosActuales >= 15) return null;
       const proximo = addYears(ingreso, (bieniosActuales + 1) * 2);
       return proximo;
     }
@@ -68,7 +68,7 @@
       return '';
     }
 
-    let carreraContext = null; // info clave para el certificado
+    let carreraContext = null;
 
     async function main(){
       const { data: { session } } = await supabase.auth.getSession();
@@ -100,6 +100,7 @@
         .single();
 
       if(error){
+        console.error('Error cargando datos de funcionario:', error);
         document.getElementById('error').textContent =
           'No se encontraron registros. Contacta a RRHH.';
         return null;
@@ -113,7 +114,7 @@
       const rut           = data.rut || '';
       const nombres       = data.nombres || '';
       const apellidos     = data.apellidos || '';
-      const fIngresoCormu = data.fecha_inicio_contrato || ''; // se usa como "Fecha de ingreso"
+      const fIngresoCormu = data.fecha_inicio_contrato || '';
 
       const bienios = Math.min(15, calcBienios(fIngreso));
       const puntosBienios = bienios * 533;
@@ -134,7 +135,6 @@
         if(node) node.textContent = val;
       };
 
-      // Identificación
       el('funcNombre', `${nombres} ${apellidos}`.trim());
       el('funcRut', rut);
       el('categoria', categoria);
@@ -146,11 +146,9 @@
       const prox = nextBienioDate(fIngreso);
       el('proxBienio', prox ? yyyymmdd(prox) : '— máximo de bienios alcanzado o sin registro');
 
-      // Bienios
       el('bienios', bienios);
       el('puntosBienios', puntosBienios);
 
-      // Capacitación
       el('capPuntajeHistorico', puntajeHistorico);
       el('capSaldoAnterior', saldoAnterior);
       el('capPuntajeAnual', puntajeAnual);
@@ -159,7 +157,6 @@
       el('capBalanceFinal', balanceFinal);
       el('capPuntosTotalesCarrera', puntosTotalesCarrera);
 
-      // Resultado global
       el('puntosTotales', puntosTotales);
       el('grado', grado);
 
@@ -176,35 +173,42 @@
         fechaIngresoPublico: yyyymmdd(parseISO(fIngreso))
       };
 
+      console.log('Contexto carrera cargado:', carreraContext);
       return carreraContext;
     }
 
     async function emitirCertificado() {
-      if (!carreraContext) {
-        alert('No se pudo cargar la información del funcionario. Intenta recargar la página.');
-        return;
-      }
+      try{
+        if (!carreraContext) {
+          alert('No se pudo cargar la información del funcionario. Intenta recargar la página.');
+          return;
+        }
 
-      const { email, rut } = carreraContext;
+        const { email, rut } = carreraContext;
 
-      const { data: cert, error } = await supabase
-        .from('certificados_carrera')
-        .insert({ email, rut })
-        .select('id')
-        .single();
+        const { data: cert, error } = await supabase
+          .from('certificados_carrera')
+          .insert({ email, rut })
+          .select('id')
+          .single();
 
-      if (error) {
-        console.error('Error creando certificado:', error);
-        alert('No se pudo registrar el certificado. Intenta nuevamente o contacta a RRHH.');
-        return;
-      }
+        if (error) {
+          console.error('Error creando certificado:', error);
+          alert('No se pudo registrar el certificado. Intenta nuevamente o contacta a RRHH.');
+          return;
+        }
 
-      const verifyUrl = `${VERIFY_BASE_URL}?id=${cert.id}`;
+        console.log('Certificado creado con ID:', cert.id);
+        const verifyUrl = `${VERIFY_BASE_URL}?id=${cert.id}`;
 
-      if (window.buildCarreraCertPDF) {
-        await window.buildCarreraCertPDF({ verifyUrl, contexto: carreraContext });
-      } else {
-        alert('No se pudo generar el PDF. Intenta nuevamente.');
+        if (window.buildCarreraCertPDF) {
+          await window.buildCarreraCertPDF({ verifyUrl, contexto: carreraContext });
+        } else {
+          alert('No se pudo generar el PDF (función buildCarreraCertPDF no disponible).');
+        }
+      } catch (e){
+        console.error('Error en emitirCertificado:', e);
+        alert('Ocurrió un error al emitir el certificado. Revisa la consola para más detalles.');
       }
     }
 
@@ -488,12 +492,19 @@
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = (err) => reject(err);
+        img.onerror = (err) => {
+          console.error('No se pudo cargar imagen:', src, err);
+          resolve(null); // seguimos sin romper
+        };
         img.src = src;
       });
     }
 
     window.buildCarreraCertPDF = async function ({ verifyUrl, contexto }) {
+      if (!window.jspdf) {
+        alert('jsPDF no está disponible.');
+        return;
+      }
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('p', 'pt', 'letter');
 
@@ -517,12 +528,16 @@
       let y = 80;
 
       try {
-        const headerImg = await loadImage('Calificaciones.png');
-        const firmaImg  = await loadImage('img/firma_director.png');
+        const [headerImg, firmaImg] = await Promise.all([
+          loadImage('Calificaciones.png'),
+          loadImage('img/firma_director.png')
+        ]);
 
-        const headerWidth = 140;
-        const headerHeight = (headerImg.height / headerImg.width) * headerWidth;
-        doc.addImage(headerImg, 'PNG', marginLeft, y - 50, headerWidth, headerHeight);
+        if (headerImg) {
+          const headerWidth = 140;
+          const headerHeight = (headerImg.height / headerImg.width) * headerWidth;
+          doc.addImage(headerImg, 'PNG', marginLeft, y - 50, headerWidth, headerHeight);
+        }
 
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
@@ -580,7 +595,9 @@
         doc.text(`San José de Maipo, ${fechaEmision}.`, marginLeft, y);
         y += 60;
 
-        doc.addImage(firmaImg, 'PNG', marginLeft + 40, y - 40, 180, 60);
+        if (firmaImg) {
+          doc.addImage(firmaImg, 'PNG', marginLeft + 40, y - 40, 180, 60);
+        }
         doc.setLineWidth(0.5);
         doc.line(marginLeft + 40, y + 30, marginLeft + 220, y + 30);
 
@@ -591,6 +608,7 @@
         doc.text('Director (S) Departamento de Salud', marginLeft + 40, y + 60);
         doc.text('Corporación Municipal de San José de Maipo', marginLeft + 40, y + 75);
 
+        // QR dinámico
         const qrCanvas = document.createElement('canvas');
         const qr = new QRious({
           element: qrCanvas,
@@ -609,7 +627,7 @@
         doc.save('Certificado_Carrera_Funcionaria.pdf');
       } catch (err) {
         console.error('Error generando certificado:', err);
-        alert('Ocurrió un problema al generar el certificado. Intenta nuevamente.');
+        alert('Ocurrió un problema al generar el certificado. Revisa la consola (F12) para más detalles.');
       }
     };
   </script>
