@@ -495,8 +495,8 @@
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 
-  <!-- jsPDF versión clásica (window.jsPDF) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.min.js"></script>
+  <!-- jsPDF desde UNPKG (UMD, expone window.jspdf.jsPDF) -->
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
   <!-- QRious para QR dinámico -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
@@ -516,13 +516,13 @@
     }
 
     window.buildCarreraCertPDF = async function ({ verifyUrl, contexto }) {
-      if (!window.jsPDF) {
-        alert('jsPDF no está disponible (window.jsPDF undefined).');
-        console.error('window.jsPDF es undefined, revisa que el script de jsPDF se haya cargado correctamente.');
+      if (!window.jspdf) {
+        alert('jsPDF no está disponible (window.jspdf undefined).');
+        console.error('window.jspdf es undefined, revisa que el script de jsPDF (UNPKG) se haya cargado correctamente.');
         return;
       }
 
-      const jsPDF = window.jsPDF;
+      const { jsPDF } = window.jspdf;
       const doc = new jsPDF('p', 'pt', 'letter');
 
       const {
