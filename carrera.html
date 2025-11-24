@@ -11,6 +11,7 @@
     .badge{padding:.2rem .5rem;border-radius:.5rem;background:#eef2ff}
   </style>
 
+  <!-- MÓDULO: carga datos desde Supabase y maneja el click del botón -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 
@@ -19,6 +20,7 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4'
     );
 
+    // Ajusta esto si tu dominio Netlify es distinto
     const VERIFY_BASE_URL = 'https://portal-funcionario.netlify.app/verificar-certificado.html';
 
     function parseISO(d){ return d ? new Date(d) : null }
@@ -135,6 +137,7 @@
         if(node) node.textContent = val;
       };
 
+      // Identificación
       el('funcNombre', `${nombres} ${apellidos}`.trim());
       el('funcRut', rut);
       el('categoria', categoria);
@@ -146,9 +149,11 @@
       const prox = nextBienioDate(fIngreso);
       el('proxBienio', prox ? yyyymmdd(prox) : '— máximo de bienios alcanzado o sin registro');
 
+      // Bienios
       el('bienios', bienios);
       el('puntosBienios', puntosBienios);
 
+      // Capacitación
       el('capPuntajeHistorico', puntajeHistorico);
       el('capSaldoAnterior', saldoAnterior);
       el('capPuntajeAnual', puntajeAnual);
@@ -157,6 +162,7 @@
       el('capBalanceFinal', balanceFinal);
       el('capPuntosTotalesCarrera', puntosTotalesCarrera);
 
+      // Resultado global
       el('puntosTotales', puntosTotales);
       el('grado', grado);
 
@@ -255,6 +261,7 @@
     </section>
 
     <div class="grid gap-6 lg:grid-cols-3">
+      <!-- Identificación -->
       <section class="p-6 rounded-2xl border">
         <h2 class="text-xl font-semibold">Identificación</h2>
         <dl class="mt-3 space-y-2">
@@ -293,6 +300,7 @@
         </dl>
       </section>
 
+      <!-- Bienios -->
       <section class="p-6 rounded-2xl border">
         <h2 class="text-xl font-semibold">Bienios</h2>
         <dl class="mt-3 space-y-2">
@@ -307,6 +315,7 @@
         </dl>
       </section>
 
+      <!-- Puntaje de Capacitación -->
       <section class="p-6 rounded-2xl border">
         <h2 class="text-xl font-semibold">Puntaje de Capacitación</h2>
         <dl class="mt-3 space-y-4">
@@ -319,6 +328,7 @@
             </dt>
             <dd id="capPuntajeHistorico" class="font-medium text-right"></dd>
           </div>
+
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Saldo disponible del año anterior
@@ -328,6 +338,7 @@
             </dt>
             <dd id="capSaldoAnterior" class="font-medium text-right"></dd>
           </div>
+
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Puntaje del año en curso
@@ -337,6 +348,7 @@
             </dt>
             <dd id="capPuntajeAnual" class="font-medium text-right"></dd>
           </div>
+
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Puntaje disponible de capacitación
@@ -346,6 +358,7 @@
             </dt>
             <dd id="capPuntajeTotalPeriodo" class="font-medium text-right"></dd>
           </div>
+
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Puntaje computado del año
@@ -355,6 +368,7 @@
             </dt>
             <dd id="capPuntajeComputadoAnual" class="font-medium text-right"></dd>
           </div>
+
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Balance final de puntos
@@ -364,6 +378,7 @@
             </dt>
             <dd id="capBalanceFinal" class="font-medium text-right"></dd>
           </div>
+
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Puntos totales para proceso de carrera funcionaria
@@ -379,6 +394,7 @@
         </p>
       </section>
 
+      <!-- Resultado + botón certificado -->
       <section class="p-6 rounded-2xl border lg:col-span-3">
         <h2 class="text-xl font-semibold">Resultado</h2>
         <dl class="mt-3 grid md:grid-cols-3 gap-4">
@@ -404,6 +420,7 @@
       </section>
     </div>
 
+    <!-- FAQ / Glosario -->
     <section class="p-6 rounded-2xl border bg-slate-50">
       <h2 class="text-xl font-semibold text-azul mb-4">Preguntas frecuentes sobre tu puntaje</h2>
       <div class="grid md:grid-cols-2 gap-6 text-sm text-slate-700">
@@ -478,15 +495,16 @@
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 
-  <!-- jsPDF sin SRI -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <!-- jsPDF versión clásica (window.jsPDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.min.js"></script>
 
   <!-- QRious para QR dinámico -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
+  <!-- Generación del Certificado de Carrera Funcionaria -->
   <script>
     function loadImage(src) {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const img = new Image();
         img.onload = () => resolve(img);
         img.onerror = (err) => {
@@ -498,12 +516,13 @@
     }
 
     window.buildCarreraCertPDF = async function ({ verifyUrl, contexto }) {
-      if (!window.jspdf) {
-        alert('jsPDF no está disponible (window.jspdf undefined).');
-        console.error('window.jspdf es undefined, revisa que el script de jsPDF se haya cargado correctamente.');
+      if (!window.jsPDF) {
+        alert('jsPDF no está disponible (window.jsPDF undefined).');
+        console.error('window.jsPDF es undefined, revisa que el script de jsPDF se haya cargado correctamente.');
         return;
       }
-      const { jsPDF } = window.jspdf;
+
+      const jsPDF = window.jsPDF;
       const doc = new jsPDF('p', 'pt', 'letter');
 
       const {
@@ -531,6 +550,7 @@
           loadImage('img/firma_director.png')
         ]);
 
+        // Encabezado con logo
         if (headerImg) {
           const headerWidth = 140;
           const headerHeight = (headerImg.height / headerImg.width) * headerWidth;
@@ -543,11 +563,13 @@
         doc.text('SAN JOSÉ DE MAIPO', marginLeft + 180, y - 11);
         doc.text('DEPARTAMENTO DE SALUD – ATENCIÓN PRIMARIA', marginLeft + 180, y + 3);
 
+        // Título
         y += 35;
         doc.setFontSize(16);
         doc.setFont('Helvetica', 'bold');
         doc.text('CERTIFICADO DE CARRERA FUNCIONARIA', 300, y + 10, { align: 'center' });
 
+        // Cuerpo introductorio
         y += 40;
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'normal');
@@ -556,6 +578,7 @@
         doc.text(splitIntro, marginLeft, y);
         y += splitIntro.length * 14 + 10;
 
+        // 1. Identificación
         doc.setFont('Helvetica', 'bold');
         doc.text('1. Identificación del funcionario', marginLeft, y);
         y += 18;
@@ -566,6 +589,7 @@
         doc.text(`Grado vigente: Grado ${grado || ''}`, marginLeft, y); y += 14;
         doc.text(`Categoría: ${categoria || ''}`, marginLeft, y); y += 20;
 
+        // 2. Situación en la Carrera Funcionaria
         doc.setFont('Helvetica', 'bold');
         doc.text('2. Situación en la Carrera Funcionaria (Ley N° 19.378)', marginLeft, y);
         y += 18;
@@ -575,6 +599,7 @@
         doc.text(`Fecha de ingreso: ${fechaIngresoCormu || ''}`, marginLeft, y); y += 14;
         doc.text(`Fecha de ingreso a funcionario público: ${fechaIngresoPublico || ''}`, marginLeft, y); y += 24;
 
+        // 3. Capacitación
         doc.setFont('Helvetica', 'bold');
         doc.text('3. Capacitación', marginLeft, y);
         y += 18;
@@ -582,6 +607,7 @@
         doc.text(`Puntaje acumulado por capacitación: ${puntosTotalesCarrera ?? ''} puntos`, marginLeft, y);
         y += 28;
 
+        // Párrafo final
         const textoFinal =
           'La presente certificación se emite a solicitud del interesado y para los fines que estime conveniente, ' +
           'de acuerdo con los antecedentes registrados en el Sistema de Gestión de Recursos Humanos de la Atención ' +
@@ -593,6 +619,7 @@
         doc.text(`San José de Maipo, ${fechaEmision}.`, marginLeft, y);
         y += 60;
 
+        // Firma Director
         if (firmaImg) {
           doc.addImage(firmaImg, 'PNG', marginLeft + 40, y - 40, 180, 60);
         }
@@ -606,6 +633,7 @@
         doc.text('Director (S) Departamento de Salud', marginLeft + 40, y + 60);
         doc.text('Corporación Municipal de San José de Maipo', marginLeft + 40, y + 75);
 
+        // QR dinámico
         const qrCanvas = document.createElement('canvas');
         const qr = new QRious({
           element: qrCanvas,
@@ -621,6 +649,7 @@
         doc.setFontSize(9);
         doc.text('Verifica tu documento aquí', qrX + qrSize / 2, qrY + qrSize + 12, { align: 'center' });
 
+        // Descargar
         doc.save('Certificado_Carrera_Funcionaria.pdf');
       } catch (err) {
         console.error('Error generando certificado:', err);
