@@ -20,7 +20,6 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4'
     );
 
-    // Ajusta esto si tu dominio Netlify es distinto
     const VERIFY_BASE_URL = 'https://portal-funcionario.netlify.app/verificar-certificado.html';
 
     function parseISO(d){ return d ? new Date(d) : null }
@@ -116,16 +115,15 @@
       const rut           = data.rut || '';
       const nombres       = data.nombres || '';
       const apellidos     = data.apellidos || '';
-      const fIngresoCormu = data.fecha_inicio_contrato || '';
 
       const bienios = Math.min(15, calcBienios(fIngreso));
       const puntosBienios = bienios * 533;
 
       const puntajeHistorico      = Number(data.cap_puntaje_historico ?? 0);
+      const puntajeComputadoAnual = Number(data.cap_puntaje_computado_anual ?? 0);
       const saldoAnterior         = Number(data.cap_saldo_anterior ?? 0);
       const puntajeAnual          = Number(data.cap_puntaje_anual ?? 0);
       const puntajeTotalPeriodo   = Number(data.cap_puntaje_total_periodo ?? 0);
-      const puntajeComputadoAnual = Number(data.cap_puntaje_computado_anual ?? 0);
       const balanceFinal          = Number(data.cap_balance_final ?? 0);
 
       const puntosTotalesCarrera = puntajeHistorico + puntajeComputadoAnual;
@@ -145,7 +143,6 @@
       el('tipoContrato', tipoContrato);
       el('fIngreso', yyyymmdd(parseISO(fIngreso)) + ' — fecha estimada según antigüedad acreditada en RRHH');
       el('fIngresoCormu', yyyymmdd(parseISO(fInicio)));
-
       const prox = nextBienioDate(fIngreso);
       el('proxBienio', prox ? yyyymmdd(prox) : '— máximo de bienios alcanzado o sin registro');
 
@@ -183,6 +180,22 @@
       return carreraContext;
     }
 
+    function fechaEmisionISO() {
+      return new Date().toISOString().slice(0,10);
+    }
+
+    function fechaVenceISO() {
+      const d = new Date();
+      d.setDate(d.getDate() + 30);
+      return d.toISOString().slice(0,10);
+    }
+
+    function fechaLargaCL(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
+    }
+
     async function emitirCertificado() {
       try{
         if (!carreraContext) {
@@ -191,11 +204,26 @@
         }
 
         const { email, rut } = carreraContext;
+        const fecha_emision = fechaEmisionISO();
+        const vence_en = fechaVenceISO();
 
         const { data: cert, error } = await supabase
           .from('certificados_carrera')
-          .insert({ email, rut })
-          .select('id')
+          .insert({
+            email,
+            rut,
+            nombre_completo: carreraContext.nombreCompleto,
+            categoria: carreraContext.categoria,
+            grado: carreraContext.grado,
+            bienios: carreraContext.bienios,
+            puntos_totales_carrera: carreraContext.puntosTotalesCarrera,
+            fecha_ingreso_cormu: carreraContext.fechaIngresoCormu,
+            fecha_ingreso_publico: carreraContext.fechaIngresoPublico,
+            fecha_emision,
+            vence_en,
+            valido: true
+          })
+          .select('id, fecha_emision, vence_en')
           .single();
 
         if (error) {
@@ -208,7 +236,16 @@
         const verifyUrl = `${VERIFY_BASE_URL}?id=${cert.id}`;
 
         if (window.buildCarreraCertPDF) {
-          await window.buildCarreraCertPDF({ verifyUrl, contexto: carreraContext });
+          await window.buildCarreraCertPDF({
+            verifyUrl,
+            contexto: {
+              ...carreraContext,
+              fechaEmisionISO: cert.fecha_emision,
+              venceEnISO: cert.vence_en,
+              fechaEmisionTexto: fechaLargaCL(cert.fecha_emision),
+              venceEnTexto: fechaLargaCL(cert.vence_en)
+            }
+          });
         } else {
           alert('No se pudo generar el PDF (función buildCarreraCertPDF no disponible).');
         }
@@ -253,7 +290,7 @@
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
     <section>
-      <h1 class="text-3xl font-bold text-azul mb-2">Resumen de Información</h1>
+      <h1 class="text-3xl font-bold text-azul mb-2">Mi Carrera Funcionaria</h1>
       <p class="text-sm text-slate-600">
         Visualiza tu información contractual, puntaje de capacitación y cálculo de grado para carrera funcionaria.
       </p>
@@ -264,36 +301,36 @@
       <!-- Identificación -->
       <section class="p-6 rounded-2xl border">
         <h2 class="text-xl font-semibold">Identificación</h2>
-        <dl class="mt-3 space-y-2">
-          <div class="grid grid-cols-2">
+        <dl class="mt-3 space-y-2 text-sm">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Nombre completo</dt>
             <dd id="funcNombre" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">RUT</dt>
             <dd id="funcRut" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Categoría</dt>
             <dd id="categoria" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Inicio contrato vigente</dt>
             <dd id="fInicio" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Tipo de contrato</dt>
             <dd id="tipoContrato" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Ingreso funcionario público</dt>
             <dd id="fIngreso" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Fecha de ingreso a la Cormu / APS</dt>
             <dd id="fIngresoCormu" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Próximo bienio estimado</dt>
             <dd id="proxBienio" class="font-medium"></dd>
           </div>
@@ -303,12 +340,12 @@
       <!-- Bienios -->
       <section class="p-6 rounded-2xl border">
         <h2 class="text-xl font-semibold">Bienios</h2>
-        <dl class="mt-3 space-y-2">
-          <div class="grid grid-cols-2">
+        <dl class="mt-3 space-y-2 text-sm">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Cantidad de bienios</dt>
             <dd id="bienios" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Puntos por bienios</dt>
             <dd id="puntosBienios" class="font-medium"></dd>
           </div>
@@ -318,91 +355,67 @@
       <!-- Puntaje de Capacitación -->
       <section class="p-6 rounded-2xl border">
         <h2 class="text-xl font-semibold">Puntaje de Capacitación</h2>
-        <dl class="mt-3 space-y-4">
+        <dl class="mt-3 space-y-4 text-sm">
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Puntaje acumulado histórico
               <p class="text-xs text-slate-400">
-                Total de puntos validados al cierre del proceso anterior. Refleja el avance histórico del funcionario.
+                Total de puntos validados al cierre del proceso anterior.
               </p>
             </dt>
             <dd id="capPuntajeHistorico" class="font-medium text-right"></dd>
           </div>
-
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Saldo disponible del año anterior
-              <p class="text-xs text-slate-400">
-                Puntos excedentes que el funcionario trae desde el período anterior, antes de considerar los generados en el año vigente.
-              </p>
             </dt>
             <dd id="capSaldoAnterior" class="font-medium text-right"></dd>
           </div>
-
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Puntaje del año en curso
-              <p class="text-xs text-slate-400">
-                Puntos presentados por el funcionario durante el año vigente.
-              </p>
             </dt>
             <dd id="capPuntajeAnual" class="font-medium text-right"></dd>
           </div>
-
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Puntaje disponible de capacitación
-              <p class="text-xs text-slate-400">
-                Total de puntos disponibles para el proceso actual de capacitación (saldo anterior + puntaje del año en curso).
-              </p>
             </dt>
             <dd id="capPuntajeTotalPeriodo" class="font-medium text-right"></dd>
           </div>
-
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Puntaje computado del año
-              <p class="text-xs text-slate-400">
-                Total de puntos que se contabilizan formalmente para el proceso del año en curso.
-              </p>
             </dt>
             <dd id="capPuntajeComputadoAnual" class="font-medium text-right"></dd>
           </div>
-
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
               Balance final de puntos
-              <p class="text-xs text-slate-400">
-                Puntos sobrantes que quedan como reserva para procesos de evaluación futuros.
-              </p>
             </dt>
             <dd id="capBalanceFinal" class="font-medium text-right"></dd>
           </div>
-
           <div class="grid grid-cols-2 gap-2">
             <dt class="text-slate-500">
-              Puntos totales para proceso de carrera funcionaria
-              <p class="text-xs text-slate-400">
-                Suma del puntaje acumulado histórico y el puntaje computado del año.
-              </p>
+              Puntos totales para carrera funcionaria
             </dt>
             <dd id="capPuntosTotalesCarrera" class="font-medium text-right"></dd>
           </div>
         </dl>
         <p class="mt-3 text-xs text-slate-500">
-          * Los valores de capacitación son informativos y reflejan el puntaje declarado y consolidado del funcionario según los registros de RRHH.
+          * Valores referenciales según registros vigentes del Departamento de Salud.
         </p>
       </section>
 
       <!-- Resultado + botón certificado -->
       <section class="p-6 rounded-2xl border lg:col-span-3">
         <h2 class="text-xl font-semibold">Resultado</h2>
-        <dl class="mt-3 grid md:grid-cols-3 gap-4">
-          <div class="grid grid-cols-2">
+        <dl class="mt-3 grid md:grid-cols-3 gap-4 text-sm">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Puntos totales</dt>
             <dd id="puntosTotales" class="font-medium"></dd>
           </div>
-          <div class="grid grid-cols-2">
+          <div class="grid grid-cols-2 gap-1">
             <dt class="text-slate-500">Grado calculado</dt>
             <dd id="grado" class="font-medium"></dd>
           </div>
@@ -411,78 +424,18 @@
           * Puntos totales = Puntos por bienios + Puntos totales para proceso de carrera funcionaria.
         </p>
 
-        <div class="mt-4">
+        <div class="mt-4 flex flex-col gap-2">
           <button id="btnCertificado"
                   class="px-4 py-2 bg-azul text-white rounded shadow hover:bg-blue-700 text-sm">
             Descargar Certificado de Carrera Funcionaria
           </button>
+          <p class="text-xs text-slate-500">
+            El certificado emitido tiene una vigencia de 30 días corridos desde la fecha de emisión.
+            Durante ese período puede ser verificado mediante el código QR incorporado en el documento.
+          </p>
         </div>
       </section>
     </div>
-
-    <!-- FAQ / Glosario -->
-    <section class="p-6 rounded-2xl border bg-slate-50">
-      <h2 class="text-xl font-semibold text-azul mb-4">Preguntas frecuentes sobre tu puntaje</h2>
-      <div class="grid md:grid-cols-2 gap-6 text-sm text-slate-700">
-        <div>
-          <h3 class="font-semibold text-slate-900">¿Qué es el Puntaje acumulado histórico?</h3>
-          <p class="mt-1">
-            Es el total de puntos de capacitación que tienes validados al cierre del proceso anterior.
-            Refleja todo lo que has acumulado en tu carrera antes del año actual.
-          </p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-slate-900">¿Qué es el Saldo disponible del año anterior?</h3>
-          <p class="mt-1">
-            Corresponde a los puntos excedentes que quedaron del período anterior y que pueden ser
-            utilizados en el proceso de capacitación del año actual.
-          </p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-slate-900">¿Qué significa Puntaje del año en curso?</h3>
-          <p class="mt-1">
-            Son los puntos que has presentado durante el año vigente, de acuerdo a las actividades
-            de capacitación realizadas y reconocidas por RRHH.
-          </p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-slate-900">¿Qué es el Puntaje disponible de capacitación?</h3>
-          <p class="mt-1">
-            Es la suma del saldo disponible del año anterior y el puntaje obtenido en el año actual.
-            Representa los puntos totales que tienes disponibles para el proceso de capacitación del período.
-          </p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-slate-900">¿Qué es el Puntaje computado del año?</h3>
-          <p class="mt-1">
-            Es el total de puntos del año en curso que finalmente se contabilizan, aplicando los criterios y
-            topes establecidos en la normativa interna de capacitación.
-          </p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-slate-900">¿Qué significa Balance final de puntos?</h3>
-          <p class="mt-1">
-            Son los puntos que sobran luego de aplicar las reglas del proceso anual. Quedan como reserva para
-            ser considerados en procesos de evaluación futuros.
-          </p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-slate-900">¿Qué son los Puntos totales para proceso de carrera funcionaria?</h3>
-          <p class="mt-1">
-            Corresponden a la suma del Puntaje acumulado histórico y el Puntaje computado del año.
-            Este valor es el que se utiliza como base para el proceso de carrera funcionaria.
-          </p>
-        </div>
-        <div>
-          <h3 class="font-semibold text-slate-900">¿Cómo se calculan los Puntos totales que se muestran en Resultado?</h3>
-          <p class="mt-1">
-            Los Puntos totales corresponden a la suma de los Puntos por bienios y los
-            Puntos totales para proceso de carrera funcionaria. Este resultado se utiliza
-            para estimar tu grado de encasillamiento según los tramos definidos.
-          </p>
-        </div>
-      </div>
-    </section>
   </main>
 
   <footer class="border-t">
@@ -495,9 +448,8 @@
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 
-  <!-- jsPDF desde UNPKG (UMD, expone window.jspdf.jsPDF) -->
+  <!-- jsPDF desde UNPKG -->
   <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-
   <!-- QRious para QR dinámico -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
@@ -518,7 +470,6 @@
     window.buildCarreraCertPDF = async function ({ verifyUrl, contexto }) {
       if (!window.jspdf) {
         alert('jsPDF no está disponible (window.jspdf undefined).');
-        console.error('window.jspdf es undefined, revisa que el script de jsPDF (UNPKG) se haya cargado correctamente.');
         return;
       }
 
@@ -533,13 +484,12 @@
         puntosTotalesCarrera,
         grado,
         fechaIngresoCormu,
-        fechaIngresoPublico
+        fechaIngresoPublico,
+        fechaEmisionISO,
+        venceEnISO,
+        fechaEmisionTexto,
+        venceEnTexto
       } = contexto || {};
-
-      const hoy = new Date();
-      const fechaEmision = hoy.toLocaleDateString('es-CL', {
-        day: '2-digit', month: 'long', year: 'numeric'
-      });
 
       const marginLeft = 60;
       let y = 80;
@@ -550,35 +500,31 @@
           loadImage('img/firma_director.png')
         ]);
 
-        // Encabezado con logo
         if (headerImg) {
-          const headerWidth = 140;
+          const headerWidth = 130;
           const headerHeight = (headerImg.height / headerImg.width) * headerWidth;
-          doc.addImage(headerImg, 'PNG', marginLeft, y - 50, headerWidth, headerHeight);
+          doc.addImage(headerImg, 'PNG', marginLeft, y - 45, headerWidth, headerHeight);
         }
 
         doc.setFont('Helvetica', 'normal');
         doc.setFontSize(10);
-        doc.text('CORPORACIÓN MUNICIPAL DE EDUCACIÓN Y SALUD', marginLeft + 180, y - 25);
-        doc.text('SAN JOSÉ DE MAIPO', marginLeft + 180, y - 11);
-        doc.text('DEPARTAMENTO DE SALUD – ATENCIÓN PRIMARIA', marginLeft + 180, y + 3);
+        doc.text('CORPORACIÓN MUNICIPAL DE EDUCACIÓN Y SALUD', marginLeft + 170, y - 22);
+        doc.text('SAN JOSÉ DE MAIPO', marginLeft + 170, y - 8);
+        doc.text('DEPARTAMENTO DE SALUD – ATENCIÓN PRIMARIA', marginLeft + 170, y + 6);
 
-        // Título
-        y += 35;
+        y += 30;
         doc.setFontSize(16);
         doc.setFont('Helvetica', 'bold');
         doc.text('CERTIFICADO DE CARRERA FUNCIONARIA', 300, y + 10, { align: 'center' });
 
-        // Cuerpo introductorio
         y += 40;
         doc.setFontSize(11);
         doc.setFont('Helvetica', 'normal');
-        const intro = `En San José de Maipo, a ${fechaEmision}, la Dirección de Salud de la Corporación Municipal de Educación y Salud de San José de Maipo certifica que:`;
+        const intro = `En San José de Maipo, a ${fechaEmisionTexto || ''}, la Dirección de Salud de la Corporación Municipal de Educación y Salud de San José de Maipo certifica que:`;
         const splitIntro = doc.splitTextToSize(intro, 480);
         doc.text(splitIntro, marginLeft, y);
         y += splitIntro.length * 14 + 10;
 
-        // 1. Identificación
         doc.setFont('Helvetica', 'bold');
         doc.text('1. Identificación del funcionario', marginLeft, y);
         y += 18;
@@ -589,7 +535,6 @@
         doc.text(`Grado vigente: Grado ${grado || ''}`, marginLeft, y); y += 14;
         doc.text(`Categoría: ${categoria || ''}`, marginLeft, y); y += 20;
 
-        // 2. Situación en la Carrera Funcionaria
         doc.setFont('Helvetica', 'bold');
         doc.text('2. Situación en la Carrera Funcionaria (Ley N° 19.378)', marginLeft, y);
         y += 18;
@@ -599,7 +544,6 @@
         doc.text(`Fecha de ingreso: ${fechaIngresoCormu || ''}`, marginLeft, y); y += 14;
         doc.text(`Fecha de ingreso a funcionario público: ${fechaIngresoPublico || ''}`, marginLeft, y); y += 24;
 
-        // 3. Capacitación
         doc.setFont('Helvetica', 'bold');
         doc.text('3. Capacitación', marginLeft, y);
         y += 18;
@@ -607,7 +551,6 @@
         doc.text(`Puntaje acumulado por capacitación: ${puntosTotalesCarrera ?? ''} puntos`, marginLeft, y);
         y += 28;
 
-        // Párrafo final
         const textoFinal =
           'La presente certificación se emite a solicitud del interesado y para los fines que estime conveniente, ' +
           'de acuerdo con los antecedentes registrados en el Sistema de Gestión de Recursos Humanos de la Atención ' +
@@ -616,44 +559,53 @@
         doc.text(splitFinal, marginLeft, y);
         y += splitFinal.length * 14 + 20;
 
-        doc.text(`San José de Maipo, ${fechaEmision}.`, marginLeft, y);
-        y += 60;
+        doc.text(`San José de Maipo, ${fechaEmisionTexto || ''}.`, marginLeft, y);
+        y += 55;
 
-        // Firma Director
+        // Firma
         if (firmaImg) {
-          doc.addImage(firmaImg, 'PNG', marginLeft + 40, y - 40, 180, 60);
+          const firmaWidth = 190;
+          const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
+          doc.addImage(firmaImg, 'PNG', marginLeft + 20, y - 40, firmaWidth, firmaHeight);
         }
+
         doc.setLineWidth(0.5);
-        doc.line(marginLeft + 40, y + 30, marginLeft + 220, y + 30);
+        doc.line(marginLeft + 40, y + 25, marginLeft + 220, y + 25);
 
         doc.setFont('Helvetica', 'bold');
         doc.setFontSize(11);
-        doc.text('Rodrigo Véliz Vivar', marginLeft + 40, y + 45);
+        doc.text('Rodrigo Véliz Vivar', marginLeft + 40, y + 40);
         doc.setFont('Helvetica', 'normal');
-        doc.text('Director (S) Departamento de Salud', marginLeft + 40, y + 60);
-        doc.text('Corporación Municipal de San José de Maipo', marginLeft + 40, y + 75);
+        doc.text('Director (S) Departamento de Salud', marginLeft + 40, y + 55);
+        doc.text('Corporación Municipal de San José de Maipo', marginLeft + 40, y + 70);
 
         // QR dinámico
         const qrCanvas = document.createElement('canvas');
         const qr = new QRious({
           element: qrCanvas,
           value: verifyUrl,
-          size: 140
+          size: 160
         });
         const qrDataUrl = qrCanvas.toDataURL('image/png');
 
-        const qrSize = 80;
-        const qrX = 470;
+        const qrSize = 90;
+        const qrX = 460;
         const qrY = y - 10;
         doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
         doc.setFontSize(9);
         doc.text('Verifica tu documento aquí', qrX + qrSize / 2, qrY + qrSize + 12, { align: 'center' });
 
-        // Descargar
+        // Vigencia en el PDF
+        doc.setFontSize(8);
+        const vig1 = `Este certificado tiene una vigencia de 30 días corridos desde la fecha de emisión (${fechaEmisionTexto || ''}).`;
+        const vig2 = `Vigente hasta: ${venceEnTexto || ''}. Transcurrido dicho plazo, la verificación mediante código QR dejará de mostrar este documento como válido.`;
+        doc.text(doc.splitTextToSize(vig1, 420), marginLeft, qrY + qrSize + 32);
+        doc.text(doc.splitTextToSize(vig2, 420), marginLeft, qrY + qrSize + 44);
+
         doc.save('Certificado_Carrera_Funcionaria.pdf');
       } catch (err) {
         console.error('Error generando certificado:', err);
-        alert('Ocurrió un problema al generar el certificado. Revisa la consola (F12) para más detalles.');
+        alert('Ocurrió un problema al generar el certificado.');
       }
     };
   </script>

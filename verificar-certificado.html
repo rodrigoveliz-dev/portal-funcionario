@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Verificación de Certificado de Carrera Funcionaria</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { --azul:#004aad; }
+    .text-azul{color:var(--azul)} .bg-azul{background-color:var(--azul)}
+  </style>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const supabase = createClient(
+      'https://ocqoipzgtsanpyzjcsis.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jcW9pcHpndHNhbnB5empjc2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjEwMDcsImV4cCI6MjA3NjczNzAwN30.mc3mM6ctAyQne5D_Dkw6w9BczzIE9CTe4AQFXqYsMo4'
+    );
+
+    function getIdFromUrl() {
+      const p = new URLSearchParams(window.location.search);
+      return p.get('id') || '';
+    }
+
+    function formatFechaLarga(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleDateString('es-CL', { day:'2-digit', month:'long', year:'numeric' });
+    }
+
+    function hoyISO() {
+      return new Date().toISOString().slice(0,10);
+    }
+
+    function expirado(vence_en) {
+      if (!vence_en) return false;
+      return vence_en < hoyISO();
+    }
+
+    let snapshot = null;
+
+    async function cargarCertificado() {
+      const id = getIdFromUrl();
+      const status = document.getElementById('statusText');
+      const card = document.getElementById('certCard');
+      const invalid = document.getElementById('invalidCard');
+
+      if (!id) {
+        status.textContent = 'No se proporcionó un identificador de certificado.';
+        invalid.classList.remove('hidden');
+        return;
+      }
+
+      status.textContent = 'Verificando certificado...';
+
+      const { data, error } = await supabase
+        .from('certificados_carrera')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) {
+        console.error('Error al buscar certificado:', error);
+        status.textContent = 'Certificado no encontrado.';
+        invalid.classList.remove('hidden');
+        return;
+      }
+
+      if (data.valido === false || expirado(data.vence_en)) {
+        status.textContent = 'Este certificado ha expirado o fue invalidado.';
+        invalid.classList.remove('hidden');
+        document.getElementById('invalidReason').textContent =
+          `Vigencia hasta: ${formatFechaLarga(data.vence_en)}. Actualmente no se considera válido.`;
+        return;
+      }
+
+      snapshot = {
+        id: data.id,
+        nombreCompleto: data.nombre_completo,
+        rut: data.rut,
+        categoria: data.categoria,
+        grado: data.grado,
+        bienios: data.bienios,
+        puntosTotalesCarrera: data.puntos_totales_carrera,
+        fechaIngresoCormu: data.fecha_ingreso_cormu,
+        fechaIngresoPublico: data.fecha_ingreso_publico,
+        fechaEmisionISO: data.fecha_emision,
+        venceEnISO: data.vence_en,
+        fechaEmisionTexto: formatFechaLarga(data.fecha_emision),
+        venceEnTexto: formatFechaLarga(data.vence_en)
+      };
+
+      status.textContent = '';
+      invalid.classList.add('hidden');
+      card.classList.remove('hidden');
+
+      document.getElementById('certNombre').textContent = snapshot.nombreCompleto || '';
+      document.getElementById('certRut').textContent = snapshot.rut || '';
+      document.getElementById('certGrado').textContent = snapshot.grado ? `Grado ${snapshot.grado}` : '';
+      document.getElementById('certCategoria').textContent = snapshot.categoria || '';
+      document.getElementById('certBienios').textContent = snapshot.bienios ?? '';
+      document.getElementById('certPuntos').textContent = snapshot.puntosTotalesCarrera ?? '';
+      document.getElementById('certFechaEmision').textContent = snapshot.fechaEmisionTexto || '';
+      document.getElementById('certVenceEn').textContent = snapshot.venceEnTexto || '';
+    }
+
+    async function descargarCopia() {
+      if (!snapshot) {
+        alert('No hay información de certificado para generar la copia.');
+        return;
+      }
+      if (!window.buildCarreraCertPDF) {
+        alert('No se pudo generar la copia en PDF.');
+        return;
+      }
+      const verifyUrl = window.location.href;
+      await window.buildCarreraCertPDF({ verifyUrl, contexto: snapshot });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      cargarCertificado();
+      document.getElementById('btnDescargarCopia').addEventListener('click', descargarCopia);
+    });
+  </script>
+</head>
+
+<body class="bg-slate-50 text-slate-800">
+  <main class="min-h-screen flex items-center justify-center px-4">
+    <div class="max-w-xl w-full">
+      <div class="mb-6 text-center">
+        <img src="Calificaciones.png" alt="Logo" class="h-14 mx-auto mb-3" />
+        <h1 class="text-2xl font-bold text-azul">Verificación de Certificado</h1>
+        <p class="text-sm text-slate-600 mt-1" id="statusText">
+          Cargando información del certificado...
+        </p>
+      </div>
+
+      <!-- Certificado válido -->
+      <section id="certCard" class="hidden bg-white shadow rounded-2xl p-6 border border-emerald-200">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="inline-flex h-3 w-3 rounded-full bg-emerald-500"></span>
+          <span class="text-sm font-semibold text-emerald-700">Certificado válido</span>
+        </div>
+
+        <dl class="space-y-2 text-sm">
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Nombre</dt>
+            <dd id="certNombre" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">RUT</dt>
+            <dd id="certRut" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Grado vigente</dt>
+            <dd id="certGrado" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Categoría</dt>
+            <dd id="certCategoria" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Bienios reconocidos</dt>
+            <dd id="certBienios" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Puntaje acum. capacitación</dt>
+            <dd id="certPuntos" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Fecha de emisión</dt>
+            <dd id="certFechaEmision" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Vigencia hasta</dt>
+            <dd id="certVenceEn" class="font-medium col-span-2"></dd>
+          </div>
+        </dl>
+
+        <p class="mt-4 text-xs text-slate-500">
+          La información mostrada corresponde al estado del funcionario al momento de la emisión del certificado.
+          Este documento es válido solo dentro de los 30 días corridos desde la fecha de emisión.
+        </p>
+
+        <div class="mt-5 flex justify-end">
+          <button id="btnDescargarCopia"
+                  class="px-4 py-2 bg-azul text-white rounded shadow text-sm hover:bg-blue-700">
+            Descargar copia en PDF
+          </button>
+        </div>
+      </section>
+
+      <!-- Certificado inválido -->
+      <section id="invalidCard" class="hidden bg-white shadow rounded-2xl p-6 border border-red-200">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+          <span class="text-sm font-semibold text-red-700">Certificado no válido</span>
+        </div>
+        <p class="text-sm text-slate-700" id="invalidReason">
+          No se encontró un certificado activo asociado a este código o ha expirado su período de vigencia.
+          Verifique la información o contacte a la Dirección de Salud.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <!-- jsPDF desde UNPKG -->
+  <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script>
+    // Reutilizamos el mismo generador de PDF que en carrera.html, sin QR (copia simple)
+    function loadImage(src) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = (err) => {
+          console.error('No se pudo cargar imagen:', src, err);
+          resolve(null);
+        };
+        img.src = src;
+      });
+    }
+
+    window.buildCarreraCertPDF = async function ({ verifyUrl, contexto }) {
+      if (!window.jspdf) {
+        alert('No se pudo cargar la librería de PDF.');
+        return;
+      }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('p', 'pt', 'letter');
+
+      const {
+        nombreCompleto,
+        rut,
+        categoria,
+        bienios,
+        puntosTotalesCarrera,
+        grado,
+        fechaIngresoCormu,
+        fechaIngresoPublico,
+        fechaEmisionISO,
+        venceEnISO,
+        fechaEmisionTexto,
+        venceEnTexto
+      } = contexto || {};
+
+      const marginLeft = 60;
+      let y = 80;
+
+      try {
+        const [headerImg, firmaImg] = await Promise.all([
+          loadImage('Calificaciones.png'),
+          loadImage('img/firma_director.png')
+        ]);
+
+        if (headerImg) {
+          const headerWidth = 130;
+          const headerHeight = (headerImg.height / headerImg.width) * headerWidth;
+          doc.addImage(headerImg, 'PNG', marginLeft, y - 45, headerWidth, headerHeight);
+        }
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text('CORPORACIÓN MUNICIPAL DE EDUCACIÓN Y SALUD', marginLeft + 170, y - 22);
+        doc.text('SAN JOSÉ DE MAIPO', marginLeft + 170, y - 8);
+        doc.text('DEPARTAMENTO DE SALUD – ATENCIÓN PRIMARIA', marginLeft + 170, y + 6);
+
+        y += 30;
+        doc.setFontSize(16);
+        doc.setFont('Helvetica', 'bold');
+        doc.text('Copia de Certificado de Carrera Funcionaria', 300, y + 10, { align: 'center' });
+
+        y += 40;
+        doc.setFontSize(11);
+        doc.setFont('Helvetica', 'normal');
+        const intro = `Copia generada a partir del registro emitido en San José de Maipo, con fecha ${fechaEmisionTexto || ''}, según antecedentes registrados en la Corporación Municipal de Educación y Salud de San José de Maipo:`;
+        const splitIntro = doc.splitTextToSize(intro, 480);
+        doc.text(splitIntro, marginLeft, y);
+        y += splitIntro.length * 14 + 10;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.text('1. Identificación del funcionario', marginLeft, y);
+        y += 18;
+
+        doc.setFont('Helvetica', 'normal');
+        doc.text(`Nombre: ${nombreCompleto || ''}`, marginLeft, y); y += 14;
+        doc.text(`RUT: ${rut || ''}`, marginLeft, y); y += 14;
+        doc.text(`Grado vigente: Grado ${grado || ''}`, marginLeft, y); y += 14;
+        doc.text(`Categoría: ${categoria || ''}`, marginLeft, y); y += 20;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.text('2. Situación en la Carrera Funcionaria (Ley N° 19.378)', marginLeft, y);
+        y += 18;
+
+        doc.setFont('Helvetica', 'normal');
+        doc.text(`Bienios reconocidos: ${bienios ?? ''}`, marginLeft, y); y += 14;
+        doc.text(`Fecha de ingreso: ${fechaIngresoCormu || ''}`, marginLeft, y); y += 14;
+        doc.text(`Fecha de ingreso a funcionario público: ${fechaIngresoPublico || ''}`, marginLeft, y); y += 24;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.text('3. Capacitación', marginLeft, y);
+        y += 18;
+        doc.setFont('Helvetica', 'normal');
+        doc.text(`Puntaje acumulado por capacitación: ${puntosTotalesCarrera ?? ''} puntos`, marginLeft, y);
+        y += 28;
+
+        const textoFinal =
+          'La presente copia se genera únicamente con fines de verificación del contenido del certificado original, ' +
+          'sin reemplazarlo ni constituir un acto administrativo adicional.';
+        const splitFinal = doc.splitTextToSize(textoFinal, 480);
+        doc.text(splitFinal, marginLeft, y);
+        y += splitFinal.length * 14 + 20;
+
+        doc.text(`San José de Maipo, ${fechaEmisionTexto || ''}.`, marginLeft, y);
+        y += 55;
+
+        if (firmaImg) {
+          const firmaWidth = 190;
+          const firmaHeight = (firmaImg.height / firmaImg.width) * firmaWidth;
+          doc.addImage(firmaImg, 'PNG', marginLeft + 20, y - 40, firmaWidth, firmaHeight);
+        }
+        doc.setLineWidth(0.5);
+        doc.line(marginLeft + 40, y + 25, marginLeft + 220, y + 25);
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text('Rodrigo Véliz Vivar', marginLeft + 40, y + 40);
+        doc.setFont('Helvetica', 'normal');
+        doc.text('Director (S) Departamento de Salud', marginLeft + 40, y + 55);
+        doc.text('Corporación Municipal de San José de Maipo', marginLeft + 40, y + 70);
+
+        doc.setFontSize(8);
+        doc.text(
+          `Vigencia original del certificado: hasta ${venceEnTexto || ''}.`,
+          marginLeft,
+          y + 90
+        );
+
+        doc.save('Copia_Certificado_Carrera_Funcionaria.pdf');
+      } catch (err) {
+        console.error('Error generando copia PDF:', err);
+        alert('Ocurrió un problema al generar la copia en PDF.');
+      }
+    };
+  </script>
+</body>
+</html>
