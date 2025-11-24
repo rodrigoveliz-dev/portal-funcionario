@@ -478,14 +478,11 @@
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-          integrity="sha512-/F2sGx4brpHBTZ4qVakiobP6KyHR+Y6SY+4PSJVpaz6RtWLpmjHtkobaN6D+PfYZ7R6POjISiFDUZIr05o7W2g=="
-          crossorigin="anonymous"
-          referrerpolicy="no-referrer"></script>
+  <!-- jsPDF sin SRI -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"
-          integrity="sha512-0LXpdcjD3CWZBtZek9Amo9hH5x/JZFYQz4YIi+ei90d7mWWJvwE3F9ikd6aN0yaDWFprj3M6wQ9sLanv6FQkxA=="
-          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- QRious para QR dinámico -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
   <script>
     function loadImage(src) {
@@ -494,7 +491,7 @@
         img.onload = () => resolve(img);
         img.onerror = (err) => {
           console.error('No se pudo cargar imagen:', src, err);
-          resolve(null); // seguimos sin romper
+          resolve(null);
         };
         img.src = src;
       });
@@ -502,7 +499,8 @@
 
     window.buildCarreraCertPDF = async function ({ verifyUrl, contexto }) {
       if (!window.jspdf) {
-        alert('jsPDF no está disponible.');
+        alert('jsPDF no está disponible (window.jspdf undefined).');
+        console.error('window.jspdf es undefined, revisa que el script de jsPDF se haya cargado correctamente.');
         return;
       }
       const { jsPDF } = window.jspdf;
@@ -608,7 +606,6 @@
         doc.text('Director (S) Departamento de Salud', marginLeft + 40, y + 60);
         doc.text('Corporación Municipal de San José de Maipo', marginLeft + 40, y + 75);
 
-        // QR dinámico
         const qrCanvas = document.createElement('canvas');
         const qr = new QRious({
           element: qrCanvas,
