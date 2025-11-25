@@ -84,6 +84,7 @@
         grado: data.grado,
         bienios: data.bienios,
         puntosTotalesCarrera: data.puntos_totales_carrera,
+        saldoPuntaje: data.saldo_puntaje,
         fechaIngresoCormu: data.fecha_ingreso_cormu,
         fechaIngresoPublico: data.fecha_ingreso_publico,
         fechaEmisionISO: data.fecha_emision,
@@ -102,6 +103,9 @@
       document.getElementById('certCategoria').textContent = snapshot.categoria || '';
       document.getElementById('certBienios').textContent = snapshot.bienios ?? '';
       document.getElementById('certPuntos').textContent = snapshot.puntosTotalesCarrera ?? '';
+      document.getElementById('certSaldo').textContent = snapshot.saldoPuntaje ?? '';
+      document.getElementById('certFechaIngresoCormu').textContent = snapshot.fechaIngresoCormu || '';
+      document.getElementById('certFechaIngresoPublico').textContent = snapshot.fechaIngresoPublico || '';
       document.getElementById('certFechaEmision').textContent = snapshot.fechaEmisionTexto || '';
       document.getElementById('certVenceEn').textContent = snapshot.venceEnTexto || '';
     }
@@ -170,6 +174,18 @@
             <dd id="certPuntos" class="font-medium col-span-2"></dd>
           </div>
           <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Saldo de puntaje</dt>
+            <dd id="certSaldo" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Ingreso a la Cormu / APS</dt>
+            <dd id="certFechaIngresoCormu" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
+            <dt class="text-slate-500">Ingreso funcionario público</dt>
+            <dd id="certFechaIngresoPublico" class="font-medium col-span-2"></dd>
+          </div>
+          <div class="grid grid-cols-3">
             <dt class="text-slate-500">Fecha de emisión</dt>
             <dd id="certFechaEmision" class="font-medium col-span-2"></dd>
           </div>
@@ -209,7 +225,6 @@
   <!-- jsPDF desde UNPKG -->
   <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script>
-    // Reutilizamos el mismo generador de PDF que en carrera.html, sin QR (copia simple)
     function loadImage(src) {
       return new Promise((resolve) => {
         const img = new Image();
@@ -236,11 +251,10 @@
         categoria,
         bienios,
         puntosTotalesCarrera,
+        saldoPuntaje,
         grado,
         fechaIngresoCormu,
         fechaIngresoPublico,
-        fechaEmisionISO,
-        venceEnISO,
         fechaEmisionTexto,
         venceEnTexto
       } = contexto || {};
@@ -302,8 +316,10 @@
         doc.text('3. Capacitación', marginLeft, y);
         y += 18;
         doc.setFont('Helvetica', 'normal');
-        doc.text(`Puntaje acumulado por capacitación: ${puntosTotalesCarrera ?? ''} puntos`, marginLeft, y);
-        y += 28;
+        const lineaCap = `Puntaje acumulado por capacitación: ${puntosTotalesCarrera ?? ''} puntos. Saldo de puntaje: ${saldoPuntaje ?? ''} puntos.`;
+        const splitCap = doc.splitTextToSize(lineaCap, 480);
+        doc.text(splitCap, marginLeft, y);
+        y += splitCap.length * 14 + 20;
 
         const textoFinal =
           'La presente copia se genera únicamente con fines de verificación del contenido del certificado original, ' +
