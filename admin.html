@@ -34,6 +34,8 @@
       9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
     };
 
+    const CERT_VERIFY_URL_BASE = 'verificar-certificado.html';
+
     async function mustBeAdmin() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { window.location.href = 'login.html'; return null; }
@@ -48,7 +50,7 @@
       return null;
     }
 
-    // AHORA INCLUYE RUT, NOMBRES, APELLIDOS
+    // columnas de la tabla funcionarios
     const cols = [
       'rut',
       'nombres',
@@ -65,6 +67,9 @@
       'cap_puntaje_computado_anual',
       'cap_balance_final'
     ];
+
+    // para exportar a CSV la última búsqueda
+    let ultimaListaFuncionarios = [];
 
     function toInput(id){ return document.getElementById(id); }
 
@@ -87,7 +92,7 @@
         .order('nombres', { ascending: true });
 
       if (search) {
-        // Buscar por email o RUT o nombre/apellido
+        // Buscar por email, RUT, nombres o apellidos
         q = q.or(
           `email.ilike.%${search}%,rut.ilike.%${search}%,nombres.ilike.%${search}%,apellidos.ilike.%${search}%`
         );
@@ -100,8 +105,11 @@
       if (error) {
         console.error(error);
         tbody.innerHTML = '<tr><td colspan="14" class="px-3 py-3 text-xs text-center text-red-600">Error cargando funcionarios</td></tr>';
+        ultimaListaFuncionarios = [];
         return;
       }
+
+      ultimaListaFuncionarios = data || [];
 
       (data||[]).forEach(r=>{
         const tr=document.createElement('tr');
@@ -136,6 +144,51 @@
       if (!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="14" class="px-3 py-3 text-xs text-center text-slate-500">Sin funcionarios para mostrar</td></tr>';
       }
+    }
+
+    function exportFuncionariosCSV(){
+      if (!ultimaListaFuncionarios.length) {
+        alert('No hay datos para exportar. Usa el buscador o espera a que cargue la tabla.');
+        return;
+      }
+
+      const headers = [
+        'RUT','Nombres','Apellidos','Email','Categoria','Tipo contrato',
+        'Inicio contrato','Ingreso público',
+        'Puntaje histórico','Saldo anterior','Puntaje anual',
+        'Total período','Computado anual','Balance final'
+      ];
+
+      const rows = ultimaListaFuncionarios.map(r => [
+        r.rut ?? '',
+        r.nombres ?? '',
+        r.apellidos ?? '',
+        r.email ?? '',
+        r.categoria ?? '',
+        r.tipo_contrato ?? '',
+        r.fecha_inicio_contrato ? r.fecha_inicio_contrato.slice(0,10) : '',
+        r.fecha_ingreso_publico ? r.fecha_ingreso_publico.slice(0,10) : '',
+        r.cap_puntaje_historico ?? '',
+        r.cap_saldo_anterior ?? '',
+        r.cap_puntaje_anual ?? '',
+        r.cap_puntaje_total_periodo ?? '',
+        r.cap_puntaje_computado_anual ?? '',
+        r.cap_balance_final ?? ''
+      ]);
+
+      const csv = [headers, ...rows]
+        .map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';'))
+        .join('\r\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `funcionarios_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     async function save(){
@@ -316,16 +369,181 @@
       loadLiquidaciones(email);
     }
 
+    // utilidades para certificados / reportes / logs
+    function hoyISO(){
+      return new Date().toISOString().slice(0,10);
+    }
+
+    function estadoCert(cert){
+      const hoy = hoyISO();
+      if (!cert.valido) return 'Invalidado';
+      if (cert.vence_en && cert.vence_en < hoy) return 'Vencido';
+      return 'Vigente';
+    }
+
+    async function loadCertificados(){
+      const qText = document.getElementById('certQ').value.trim();
+      let q = supabase
+        .from('certificados_carrera')
+        .select('id,email,rut,nombre_completo,categoria,grado,bienios,puntos_totales_carrera,saldo_puntaje,codigo_serie,fecha_emision,vence_en,valido')
+        .order('fecha_emision', { ascending:false });
+
+      if (qText) {
+        q = q.or(
+          `email.ilike.%${qText}%,rut.ilike.%${qText}%,codigo_serie.ilike.%${qText}%,nombre_completo.ilike.%${qText}%`
+        );
+      }
+
+      const { data, error } = await q;
+      const tbody = document.getElementById('certTbody');
+      tbody.innerHTML = '';
+
+      if (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="8" class="px-3 py-3 text-xs text-center text-red-600">Error cargando certificados.</td></tr>';
+        return;
+      }
+
+      if (!data?.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-3 py-3 text-xs text-center text-slate-500">Sin certificados emitidos.</td></tr>';
+        return;
+      }
+
+      data.forEach(c => {
+        const tr = document.createElement('tr');
+        const estado = estadoCert(c);
+
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-xs">${c.fecha_emision?.slice(0,10) ?? ''}</td>
+          <td class="px-3 py-2 text-xs">${c.codigo_serie ?? ''}</td>
+          <td class="px-3 py-2 text-xs">${c.nombre_completo ?? ''}</td>
+          <td class="px-3 py-2 text-xs">${c.rut ?? ''}</td>
+          <td class="px-3 py-2 text-xs">${c.email ?? ''}</td>
+          <td class="px-3 py-2 text-xs">${c.grado ?? ''} / ${c.categoria ?? ''}</td>
+          <td class="px-3 py-2 text-xs">${estado}</td>
+          <td class="px-3 py-2 text-xs text-right">
+            <button class="text-azul underline mr-2 ver-cert">Ver</button>
+            ${estado === 'Vigente'
+              ? '<button class="text-red-600 underline invalidar-cert">Invalidar</button>'
+              : ''}
+          </td>
+        `;
+
+        const verBtn = tr.querySelector('.ver-cert');
+        verBtn.onclick = () => {
+          const url = `${CERT_VERIFY_URL_BASE}?id=${c.id}`;
+          window.open(url, '_blank');
+        };
+
+        const invBtn = tr.querySelector('.invalidar-cert');
+        if (invBtn) {
+          invBtn.onclick = async () => {
+            if (!confirm(`¿Invalidar el certificado ${c.codigo_serie || ''}?`)) return;
+            const { error: e } = await supabase
+              .from('certificados_carrera')
+              .update({ valido: false })
+              .eq('id', c.id);
+
+            if (e) {
+              alert('No se pudo invalidar el certificado.');
+              console.error(e);
+              return;
+            }
+
+            loadCertificados();
+          };
+        }
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadLogs(){
+      const tbody = document.getElementById('logsTbody');
+
+      const { data, error } = await supabase
+        .from('access_logs')
+        .select('email,page,created_at,ip')
+        .order('created_at', { ascending:false })
+        .limit(100);
+
+      if (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-3 text-xs text-center text-red-600">Error cargando logs.</td></tr>';
+        return;
+      }
+
+      if (!data?.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="px-3 py-3 text-xs text-center text-slate-500">Sin registros.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      data.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-3 py-2 text-xs">${l.created_at ? new Date(l.created_at).toLocaleString('es-CL') : ''}</td>
+          <td class="px-3 py-2 text-xs">${l.email ?? ''}</td>
+          <td class="px-3 py-2 text-xs">${l.page ?? ''}</td>
+          <td class="px-3 py-2 text-xs">${l.ip ?? ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadReportes(){
+      try {
+        const hoy = hoyISO();
+
+        const [
+          { count: totalFunc },
+          { count: totalCert },
+          { data: vigentesData },
+          { data: vencidosData }
+        ] = await Promise.all([
+          supabase.from('funcionarios').select('*', { count: 'exact', head: true }),
+          supabase.from('certificados_carrera').select('*', { count: 'exact', head: true }),
+          supabase
+            .from('certificados_carrera')
+            .select('id,vence_en')
+            .eq('valido', true)
+            .gte('vence_en', hoy),
+          supabase
+            .from('certificados_carrera')
+            .select('id,vence_en,valido')
+            .or(`valido.eq.false,vence_en.lt.${hoy}`)
+        ]);
+
+        const span = (id, val) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = val ?? 0;
+        };
+
+        span('repTotalFunc', totalFunc ?? 0);
+        span('repTotalCert', totalCert ?? 0);
+        span('repCertVig', vigentesData ? vigentesData.length : 0);
+        span('repCertNoVig', vencidosData ? vencidosData.length : 0);
+      } catch (e) {
+        console.error('Error cargando reportes:', e);
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       const user = await mustBeAdmin();
       if (!user) return;
 
       loadTable();
+      loadCertificados();
+      loadLogs();
+      loadReportes();
 
       document.getElementById('q').oninput = loadTable;
       document.getElementById('save').onclick = save;
       document.getElementById('new').onclick = clearForm;
       document.getElementById('delete').onclick = deleteFuncionario;
+
+      const exportBtn = document.getElementById('exportExcel');
+      if (exportBtn) exportBtn.onclick = exportFuncionariosCSV;
 
       document.getElementById('liqEmail').onchange = () => {
         loadLiquidaciones(document.getElementById('liqEmail').value.trim());
@@ -333,6 +551,9 @@
       document.getElementById('liqUploadBtn').onclick = () => {
         uploadLiquidacion(user.email);
       };
+
+      const certQ = document.getElementById('certQ');
+      if (certQ) certQ.oninput = loadCertificados;
 
       document.getElementById('logout').onclick = async () => {
         await supabase.auth.signOut();
@@ -361,11 +582,14 @@
 
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-3xl font-bold text-azul">Administrador RRHH</h1>
-    <div class="flex gap-2">
+    <div class="flex flex-wrap gap-2">
       <input id="q" type="search" placeholder="Buscar por email o RUT" class="rounded-xl border px-3 py-2">
       <button id="new" class="px-4 py-2 rounded-xl border">Nuevo</button>
       <button id="save" class="px-4 py-2 rounded-xl bg-azul text-white">Guardar</button>
       <button id="delete" class="px-4 py-2 rounded-xl border border-red-300 text-red-600">Eliminar</button>
+      <button id="exportExcel" class="px-4 py-2 rounded-xl border border-emerald-400 text-emerald-700 text-sm">
+        Exportar Excel (CSV)
+      </button>
     </div>
   </div>
 
@@ -553,6 +777,80 @@
       </table>
     </div>
 
+  </section>
+
+  <!-- REPORTES RÁPIDOS -->
+  <section class="mt-10 rounded-2xl border p-6">
+    <h2 class="font-semibold text-xl mb-4">Reportes rápidos</h2>
+    <div class="grid md:grid-cols-4 gap-4 text-sm">
+      <div class="border rounded-xl p-4">
+        <p class="text-xs text-slate-500">Funcionarios registrados</p>
+        <p class="text-2xl font-bold mt-1" id="repTotalFunc">0</p>
+      </div>
+      <div class="border rounded-xl p-4">
+        <p class="text-xs text-slate-500">Certificados emitidos</p>
+        <p class="text-2xl font-bold mt-1" id="repTotalCert">0</p>
+      </div>
+      <div class="border rounded-xl p-4">
+        <p class="text-xs text-slate-500">Certificados vigentes</p>
+        <p class="text-2xl font-bold mt-1 text-emerald-600" id="repCertVig">0</p>
+      </div>
+      <div class="border rounded-xl p-4">
+        <p class="text-xs text-slate-500">Certificados vencidos / invalidados</p>
+        <p class="text-2xl font-bold mt-1 text-red-600" id="repCertNoVig">0</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CERTIFICADOS EMITIDOS -->
+  <section class="mt-10 rounded-2xl border p-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-xl">Certificados emitidos</h2>
+      <input id="certQ" type="search" placeholder="Buscar por email, RUT o código de serie" class="rounded-xl border px-3 py-2 text-sm">
+    </div>
+    <div class="overflow-auto">
+      <table class="min-w-full text-xs">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-3 py-2 text-left">Fecha emisión</th>
+            <th class="px-3 py-2 text-left">Código serie</th>
+            <th class="px-3 py-2 text-left">Nombre</th>
+            <th class="px-3 py-2 text-left">RUT</th>
+            <th class="px-3 py-2 text-left">Email</th>
+            <th class="px-3 py-2 text-left">Grado / Cat.</th>
+            <th class="px-3 py-2 text-left">Estado</th>
+            <th class="px-3 py-2 text-right">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="certTbody">
+          <tr>
+            <td colspan="8" class="px-3 py-3 text-center text-slate-500 text-xs">Sin datos</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- LOGS DE ACCESO -->
+  <section class="mt-10 rounded-2xl border p-6">
+    <h2 class="font-semibold text-xl mb-3">Logs de acceso (últimos 100)</h2>
+    <div class="overflow-auto">
+      <table class="min-w-full text-xs">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="px-3 py-2 text-left">Fecha / hora</th>
+            <th class="px-3 py-2 text-left">Email</th>
+            <th class="px-3 py-2 text-left">Página</th>
+            <th class="px-3 py-2 text-left">IP</th>
+          </tr>
+        </thead>
+        <tbody id="logsTbody">
+          <tr>
+            <td colspan="4" class="px-3 py-3 text-center text-slate-500 text-xs">Sin registros</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
 </main>
