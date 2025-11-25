@@ -48,11 +48,22 @@
       return null;
     }
 
+    // AHORA INCLUYE RUT, NOMBRES, APELLIDOS
     const cols = [
-      'email','categoria','tipo_contrato','fecha_inicio_contrato',
-      'fecha_ingreso_publico','cap_puntaje_historico','cap_saldo_anterior',
-      'cap_puntaje_anual','cap_puntaje_total_periodo',
-      'cap_puntaje_computado_anual','cap_balance_final'
+      'rut',
+      'nombres',
+      'apellidos',
+      'email',
+      'categoria',
+      'tipo_contrato',
+      'fecha_inicio_contrato',
+      'fecha_ingreso_publico',
+      'cap_puntaje_historico',
+      'cap_saldo_anterior',
+      'cap_puntaje_anual',
+      'cap_puntaje_total_periodo',
+      'cap_puntaje_computado_anual',
+      'cap_balance_final'
     ];
 
     function toInput(id){ return document.getElementById(id); }
@@ -69,8 +80,18 @@
 
     async function loadTable(){
       const search = document.getElementById('q').value.trim();
-      let q = supabase.from('funcionarios').select(cols.join(',')).order('email');
-      if(search) q = q.ilike('email',`%${search}%`);
+      let q = supabase
+        .from('funcionarios')
+        .select(cols.join(','))
+        .order('apellidos', { ascending: true })
+        .order('nombres', { ascending: true });
+
+      if (search) {
+        // Buscar por email o RUT o nombre/apellido
+        q = q.or(
+          `email.ilike.%${search}%,rut.ilike.%${search}%,nombres.ilike.%${search}%,apellidos.ilike.%${search}%`
+        );
+      }
 
       const { data, error } = await q;
       const tbody=document.getElementById('tbody');
@@ -78,7 +99,7 @@
 
       if (error) {
         console.error(error);
-        tbody.innerHTML = '<tr><td colspan="11" class="px-3 py-3 text-xs text-center text-red-600">Error cargando funcionarios</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" class="px-3 py-3 text-xs text-center text-red-600">Error cargando funcionarios</td></tr>';
         return;
       }
 
@@ -86,6 +107,9 @@
         const tr=document.createElement('tr');
         tr.className='row cursor-pointer';
         tr.innerHTML=`
+          <td class="px-3 py-2">${r.rut ?? ''}</td>
+          <td class="px-3 py-2">${r.nombres ?? ''}</td>
+          <td class="px-3 py-2">${r.apellidos ?? ''}</td>
           <td class="px-3 py-2">${r.email}</td>
           <td class="px-3 py-2">${r.categoria??''}</td>
           <td class="px-3 py-2">${r.tipo_contrato??''}</td>
@@ -110,7 +134,7 @@
       });
 
       if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" class="px-3 py-3 text-xs text-center text-slate-500">Sin funcionarios para mostrar</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" class="px-3 py-3 text-xs text-center text-slate-500">Sin funcionarios para mostrar</td></tr>';
       }
     }
 
@@ -119,8 +143,12 @@
       if(!row.email) return alert('Email obligatorio');
 
       const nums=[
-        'cap_puntaje_historico','cap_saldo_anterior','cap_puntaje_anual',
-        'cap_puntaje_total_periodo','cap_puntaje_computado_anual','cap_balance_final'
+        'cap_puntaje_historico',
+        'cap_saldo_anterior',
+        'cap_puntaje_anual',
+        'cap_puntaje_total_periodo',
+        'cap_puntaje_computado_anual',
+        'cap_balance_final'
       ];
       nums.forEach(n=>row[n]=row[n]?Number(row[n]):null);
 
@@ -334,7 +362,7 @@
   <div class="flex items-center justify-between mb-6">
     <h1 class="text-3xl font-bold text-azul">Administrador RRHH</h1>
     <div class="flex gap-2">
-      <input id="q" type="search" placeholder="Buscar por email" class="rounded-xl border px-3 py-2">
+      <input id="q" type="search" placeholder="Buscar por email o RUT" class="rounded-xl border px-3 py-2">
       <button id="new" class="px-4 py-2 rounded-xl border">Nuevo</button>
       <button id="save" class="px-4 py-2 rounded-xl bg-azul text-white">Guardar</button>
       <button id="delete" class="px-4 py-2 rounded-xl border border-red-300 text-red-600">Eliminar</button>
@@ -347,6 +375,9 @@
       <table class="min-w-full text-sm">
         <thead class="bg-slate-50">
           <tr>
+            <th class="px-3 py-2 text-left">RUT</th>
+            <th class="px-3 py-2 text-left">Nombre</th>
+            <th class="px-3 py-2 text-left">Apellidos</th>
             <th class="px-3 py-2 text-left">Email</th>
             <th class="px-3 py-2 text-left">Cat.</th>
             <th class="px-3 py-2 text-left">Contrato</th>
@@ -368,6 +399,22 @@
       <h2 class="font-semibold mb-2 text-xl"><span id="mode">Nuevo funcionario</span></h2>
 
       <div class="space-y-3 text-sm">
+
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="text-xs">RUT</label>
+            <input id="rut" type="text" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+          <div>
+            <label class="text-xs">Nombres</label>
+            <input id="nombres" type="text" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+          <div>
+            <label class="text-xs">Apellidos</label>
+            <input id="apellidos" type="text" class="mt-1 w-full border rounded px-3 py-2">
+          </div>
+        </div>
+
         <div>
           <label class="text-xs">Email</label>
           <input id="email" type="email" class="mt-1 w-full border rounded px-3 py-2">
